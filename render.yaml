@@ -1,0 +1,40 @@
+# Render Blueprint — Mafia42 Collection Journal
+# Deploy at: https://dashboard.render.com/blueprints
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: mafia42-collection-journal
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    branch: main
+    plan: free
+    healthCheckPath: /api/health
+
+    envVars:
+      # REQUIRED — generate a secure random value:
+      #   python -c "import secrets; print(secrets.token_hex(32))"
+      - key: SECRET_KEY
+        generateValue: true
+
+      # Set this to your Supabase / Render PostgreSQL connection string
+      # Format: postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+      - key: DATABASE_URL
+        value: sqlite:///./mafia42.db   # ← REPLACE with PostgreSQL URL before deploying
+
+      # Initial owner account (change password after first login!)
+      - key: INITIAL_OWNER_EMAIL
+        value: owner@mafia42journal.com
+      - key: INITIAL_OWNER_USERNAME
+        value: Owner
+      - key: INITIAL_OWNER_PASSWORD
+        generateValue: true   # Random password on first deploy — check Render logs
+
+      # CORS — update after first deploy to lock down to your domain
+      # e.g. ["https://mafia42-collection-journal.onrender.com"]
+      - key: CORS_ORIGINS
+        value: '["*"]'
+
+      - key: PYTHONUNBUFFERED
+        value: "1"

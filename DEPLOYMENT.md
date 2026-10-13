@@ -1,93 +1,176 @@
-# Mafia42 Collection Journal — Production Deployment Guide
+# Deployment Guide — Mafia42 Collection Journal
 
-This guide details how to deploy the Mafia42 Collection Journal as a publicly accessible HTTPS web application with a persistent database and owner-only administration.
-
----
-
-## 1. Architecture Overview
-
-- **Frontend**: React 18 + TypeScript + Vite, compiled into `frontend/dist/`.
-- **Backend**: FastAPI with Uvicorn, serving API routes at `/api/*` and static assets at `/assets/*`.
-- **Database**: PostgreSQL (relational database with ACID guarantees, foreign keys, indexes).
-- **Authentication**: JWT access tokens stored in HTTP-only cookies or Authorization headers, passwords hashed with bcrypt.
-- **Image Assets**: Statically hosted binary images (`.webp`, `.jpg`, `.png`) served under `/assets/<category>/<filename>`.
+This guide covers deploying the application to [Render.com](https://render.com) (recommended free option)
+using [Supabase](https://supabase.com) for the persistent PostgreSQL database.
 
 ---
 
-## 2. Option A: Cloud Deployment (Render / Railway / Fly.io)
+## Architecture
 
-### Step 1: Managed PostgreSQL Database
-1. Provision a PostgreSQL instance on Railway, Render, or Supabase.
-2. Note the connection URI:
-   `postgresql://postgres:<password>@<host>:5432/<database>`
-
-### Step 2: Environment Variables
-Configure the following environment variables in your deployment dashboard:
-- `DATABASE_URL`: Your PostgreSQL connection string.
-- `SECRET_KEY`: A random 64-character hex secret for JWT token encryption.
-- `INITIAL_OWNER_EMAIL`: The owner's email address (e.g., `owner@mafia42journal.com`).
-- `INITIAL_OWNER_USERNAME`: The owner's display handle (e.g., `Owner`).
-- `INITIAL_OWNER_PASSWORD`: A secure deployment-time password for the owner.
-
-### Step 3: Build & Start Command
-- **Build Command**:
-  ```bash
-  cd frontend && npm install && npm run build && cd .. && pip install -r backend/requirements.txt
-  ```
-- **Start Command**:
-  ```bash
-  uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
-  ```
+```
+GitHub Repo (code + images)
+       │
+       ▼
+  Render.com (Docker web service)
+  ├── FastAPI backend
+  ├── React frontend (served as SPA from /dist)
+  ├── Game images (baked into Docker image from frontend/public/assets)
+  └── DATABASE_URL ──────────► Supabase PostgreSQL (persistent data)
+```
 
 ---
 
-## 3. Option B: Docker Compose (VPS / DigitalOcean / Linode)
+## Step 1 — Create a Free Supabase PostgreSQL Database
 
-1. Clone repository to your server:
-   ```bash
-   git clone <repo-url> mafia42-journal
-   cd mafia42-journal
-   ```
-2. Copy `.env.example` to `.env` and fill in secrets:
-   ```bash
-   cp .env.example .env
-   ```
-3. Run with Docker Compose:
-   ```bash
-   docker compose up -d --build
-   ```
-4. Configure Nginx with Let's Encrypt SSL:
-   ```nginx
-   server {
-       server_name journal.yourdomain.com;
+> This is your **permanent database** — all catalogue items, users, and personal collections live here.
 
-       location / {
-           proxy_pass http://localhost:8000;
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-           proxy_set_header X-Forwarded-Proto $scheme;
-       }
-   }
-   ```
-   ```bash
-   certbot --nginx -d journal.yourdomain.com
-   ```
+1. Go to **[supabase.com](https://supabase.com)** → **Sign up** (free)
+2. Click **New Project**
+   - Organisation: your personal org
+   - Project name: `mafia42-journal`
+   - Database password: choose a strong password (save it!)
+   - Region: pick the closest region to you
+3. Wait ~2 minutes for project to be created
+4. In the left sidebar go to **Project Settings → Database**
+5. Copy the **Connection string (URI)** under "Connection string" → select **URI** tab
+   - It looks like: `postgresql://postgres:[YOUR-PASSWORD]@db.xxxx.supabase.co:5432/postgres`
+6. **Save this URL** — you'll need it in Step 3
 
 ---
 
-## 4. Administrative Owner Account Verification
+## Step 2 — Deploy to Render
 
-1. On first boot, the system checks if an owner exists. If none is found, it automatically creates the owner account specified in `INITIAL_OWNER_EMAIL` and `INITIAL_OWNER_PASSWORD`.
-2. To reset or bootstrap an owner account via CLI:
-   ```bash
-   python scripts/bootstrap_owner.py owner@example.com Owner MySecurePassword2026!
-   ```
-3. Log in via the web interface. Once logged in as Owner, the sidebar will show the **Admin Dashboard** with access to:
-   - Create, edit, and delete catalogue items.
-   - Upload new catalogue images.
-   - Manage wallets with 1 logo and 3 detailed images.
-   - Suspend or activate user accounts.
-   - View security audit logs.
-   - Export and import catalogue JSON backups.
+1. Go to **[render.com](https://render.com)** → **Sign up** (free, use GitHub login)
+2. Click **New → Web Service**
+3. Select **"Build and deploy from a Git repository"**
+4. Connect your GitHub account if not already connected
+5. Find and select: `manyaa133/mafia42-collection-journal`
+6. Configure the service:
+   - **Name**: `mafia42-collection-journal`
+   - **Region**: Oregon (US West) or nearest
+   - **Branch**: `main`
+   - **Runtime**: **Docker**
+   - **Dockerfile Path**: `./Dockerfile`
+   - **Plan**: **Free**
+7. Click **Create Web Service** — Render will start building
 
+---
+
+## Step 3 — Set Environment Variables in Render
+
+After the service is created, go to its **Environment** tab and add:
+
+| Key | Value |
+|-----|-------|
+| `DATABASE_URL` | `postgresql://postgres:YOUR_PASSWORD@db.xxxx.supabase.co:5432/postgres` |
+| `SECRET_KEY` | Run `python -c "import secrets; print(secrets.token_hex(32))"` and paste result |
+| `INITIAL_OWNER_EMAIL` | `owner@mafia42journal.com` (or your email) |
+| `INITIAL_OWNER_USERNAME` | `Owner` |
+| `INITIAL_OWNER_PASSWORD` | A strong password (you'll log in with this!) |
+| `CORS_ORIGINS` | `["https://mafia42-collection-journal.onrender.com"]` |
+
+> [!IMPORTANT]
+> Replace `mafia42-collection-journal.onrender.com` with your **actual** Render URL (visible in the service overview).
+> After setting env vars, click **Manual Deploy → Deploy latest commit** to apply them.
+
+---
+
+## Step 4 — Verify the Deployment
+
+1. Open your Render URL (e.g. `https://mafia42-collection-journal.onrender.com`)
+2. The site should load — you'll see the Mafia42 Collection Journal
+3. Check the health endpoint: `https://mafia42-collection-journal.onrender.com/api/health`
+   - Should return: `{"status": "healthy", ...}`
+4. Log in with your owner credentials
+5. Go to **Owner Administration** → verify catalogue items are present
+6. Try adding a test item in any section → verify it saves and appears
+
+---
+
+## Step 5 — Change Your Owner Password
+
+On first login:
+1. Go to **Profile** → change the password set in `INITIAL_OWNER_PASSWORD`
+2. This is important — the initial password was set via env var which anyone with Render access could see
+
+---
+
+## Data Persistence
+
+| Data type | Where stored | Persists after redeploy? |
+|-----------|-------------|--------------------------|
+| Catalogue items | Supabase PostgreSQL | ✅ Yes — external database |
+| User accounts | Supabase PostgreSQL | ✅ Yes |
+| User collections | Supabase PostgreSQL | ✅ Yes |
+| Pre-existing game images | Docker image (baked in) | ✅ Yes — always rebuilt from repo |
+| Images uploaded via admin | Container filesystem | ⚠️ Lost on redeploy (see below) |
+
+### Uploaded Image Persistence (Optional — Paid)
+
+If you upload new images through the Admin Panel and want them to survive redeployments:
+- **Render Disk**: $1/GB/month — add a 1GB persistent disk mounted at `/app/backend/static/assets`
+- **Cloudinary free tier**: 25GB storage — requires code changes to use Cloudinary SDK for uploads
+
+For now (free tier), uploaded images survive **server restarts** but not full redeployments. The pre-built game images are always safe.
+
+---
+
+## Updating the Application
+
+To deploy code changes:
+```bash
+# Make your changes locally
+git add .
+git commit -m "your change description"
+git push origin main
+```
+
+Render will **automatically redeploy** on every push to `main`.
+
+> [!CAUTION]
+> The database is **never** reset on redeploy — only missing owner account and empty catalogue are seeded.
+> Existing items, user collections, and relationships are always preserved.
+
+---
+
+## Local Development
+
+```bash
+# Backend
+pip install -r backend/requirements.txt
+uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
+
+# Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+## Administrator Usage
+
+Once deployed, the owner can:
+
+1. **Log in** at the public URL with the owner credentials
+2. **Open Owner Administration** from the left navigation
+3. **Add new items** to any section: Skins, Icons, Cards, Wallets, Nameplates, Frames
+4. **Edit existing items** via the edit button on any catalogue item
+5. **Delete items** with a confirmation step
+6. **Upload images** through the item creation/edit form
+7. **Manage users** and view audit logs
+
+All changes save to the Supabase database immediately and permanently.
+
+---
+
+## Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| White page / 404 | Frontend not built — check Render build logs |
+| 500 on login | Check `DATABASE_URL` env var in Render |
+| Images not loading | Check that `COPY frontend/public/assets` step ran in Docker build |
+| "Not authenticated" | JWT secret mismatch — verify `SECRET_KEY` env var |
+| Owner can't log in | Check `INITIAL_OWNER_*` env vars — reset by clearing DB and redeploying |
+| Slow first load | Render free tier sleeps after 15min inactivity — first request wakes it up (~30s) |
