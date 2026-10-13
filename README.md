@@ -5,6 +5,8 @@
 > All game assets, characters, and content are the property of their respective owners.
 > Visit the official game at [mafia42.com](https://mafia42.com).
 
+> **Live Website**: [Open Mafia42 Collection Journal](https://mafia42-collection-journal.onrender.com/)
+
 ---
 
 A personal collection journal for **Mafia42** featuring authenticated user accounts, persistent personal collection data, server-side CP calculation, owner-only catalogue administration, skin–card relationships, and icon move controls.
