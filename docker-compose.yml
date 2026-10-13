@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: mafia42_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mafia42}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mafia42secret2026}
+      POSTGRES_DB: ${POSTGRES_DB:-mafia42_journal}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mafia42_app
+    restart: always
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://mafia42:mafia42secret2026@db:5432/mafia42_journal
+      SECRET_KEY: ${SECRET_KEY:-m42_super_secret_production_key_2026_xyz}
+      INITIAL_OWNER_EMAIL: ${INITIAL_OWNER_EMAIL:-owner@mafia42journal.com}
+      INITIAL_OWNER_USERNAME: ${INITIAL_OWNER_USERNAME:-Owner}
+      INITIAL_OWNER_PASSWORD: ${INITIAL_OWNER_PASSWORD:-OwnerJournal2026!Secure}
+    volumes:
+      - app_assets:/app/backend/static/assets
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:
+  app_assets:
+
