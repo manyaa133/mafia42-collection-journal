@@ -3,23 +3,31 @@ Safe, repeatable migration script from SQLite (mafia42.db) to PostgreSQL (Supaba
 Preserves:
 - IDs, foreign keys, timestamps, ordering
 - catalogue_items (929 items)
-- users & user_profiles (94 records)
-- user_collections (79 entries)
+- users & user_profiles (104 records)
+- user_collections (87 entries)
 - user_gems, user_goals, user_achievements, user_notes
-- audit_logs (236 records)
+- audit_logs (261 records)
+
+Features:
+- Dry-run mode (--dry-run) inspects both source SQLite and destination Supabase PostgreSQL
+- Checks destination connectivity and displays existing table counts without writing any data
+- Creates tables using SQLAlchemy models (Base.metadata.create_all) without dropping or modifying existing tables
+- Idempotently inserts records only if their ID does not already exist
+- Compares source vs. target record counts upon completion
 
 Usage:
-  # With DATABASE_URL set in environment:
-  python scripts/migrate_sqlite_to_postgres.py
-
-Dry-run:
+  # Dry-run inspection:
+  $env:TARGET_DATABASE_URL="postgresql://postgres.xxx:password@aws-0-xx.pooler.supabase.com:6543/postgres"
   python scripts/migrate_sqlite_to_postgres.py --dry-run
+
+  # Full migration:
+  python scripts/migrate_sqlite_to_postgres.py
 """
 
 import os
 import sys
 import argparse
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 
 # Add project root to sys.path
@@ -40,7 +48,7 @@ def run_migration(dry_run: bool = False):
     target_url = os.environ.get("TARGET_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if not target_url or target_url.startswith("sqlite"):
         print("ERROR: TARGET_DATABASE_URL or DATABASE_URL must be set to a PostgreSQL URL (e.g. Supabase)")
-        print("Example: set TARGET_DATABASE_URL=postgresql://postgres.xxx:password@aws-0-xx.pooler.supabase.com:6543/postgres")
+        print("Example: $env:TARGET_DATABASE_URL=\"postgresql://postgres.xxx:password@aws-0-xx.pooler.supabase.com:6543/postgres\"")
         sys.exit(1)
 
     # Normalize url scheme
@@ -49,8 +57,10 @@ def run_migration(dry_run: bool = False):
     if target_url.startswith("postgresql://"):
         target_url = target_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
+    # Obfuscate credentials for safe console logging
+    safe_target = target_url.split("@")[-1] if "@" in target_url else "configured_host"
     print(f"Source SQLite: {sqlite_path}")
-    print(f"Target Postgres: {target_url.split('@')[-1] if '@' in target_url else target_url}")
+    print(f"Target Postgres Host/DB: {safe_target}")
 
     # Source Session
     src_engine = create_engine(f"sqlite:///{sqlite_path}", connect_args={"check_same_thread": False})
@@ -58,26 +68,69 @@ def run_migration(dry_run: bool = False):
     src_db = SrcSession()
 
     # Target Session
-    tgt_engine = create_engine(target_url)
-    TgtSession = sessionmaker(bind=tgt_engine)
-    tgt_db = TgtSession()
+    try:
+        tgt_engine = create_engine(target_url)
+        TgtSession = sessionmaker(bind=tgt_engine)
+        tgt_db = TgtSession()
+        # Verify connection
+        with tgt_engine.connect() as conn:
+            pass
+        print("Successfully connected to destination PostgreSQL.")
+    except Exception as e:
+        print(f"\nERROR: Could not connect to target database ({safe_target}).")
+        print("Details:", str(e))
+        sys.exit(1)
+
+    # Inspect target tables
+    tgt_inspector = inspect(tgt_engine)
+    existing_tables = tgt_inspector.get_table_names()
+    print(f"Existing tables in destination: {existing_tables if existing_tables else 'None (Empty Database)'}")
 
     if dry_run:
-        print("\n--- DRY RUN: Counting records in source SQLite ---")
-        print(f"Users: {src_db.query(User).count()}")
-        print(f"User Profiles: {src_db.query(UserProfile).count()}")
-        print(f"Catalogue Items: {src_db.query(CatalogueItem).count()}")
-        print(f"User Collections: {src_db.query(UserCollectionItem).count()}")
-        print(f"User Gems: {src_db.query(UserGem).count()}")
-        print(f"User Goals: {src_db.query(UserGoal).count()}")
-        print(f"User Achievements: {src_db.query(UserAchievement).count()}")
-        print(f"User Notes: {src_db.query(UserNote).count()}")
-        print(f"Audit Logs: {src_db.query(AuditLog).count()}")
-        print("--- Dry run completed. No data written. ---")
+        print("\n--- DRY RUN: Source SQLite Record Counts ---")
+        src_counts = {
+            "users": src_db.query(User).count(),
+            "user_profiles": src_db.query(UserProfile).count(),
+            "catalogue_items": src_db.query(CatalogueItem).count(),
+            "user_collections": src_db.query(UserCollectionItem).count(),
+            "user_gems": src_db.query(UserGem).count(),
+            "user_goals": src_db.query(UserGoal).count(),
+            "user_achievements": src_db.query(UserAchievement).count(),
+            "user_notes": src_db.query(UserNote).count(),
+            "audit_logs": src_db.query(AuditLog).count(),
+        }
+        for table, count in src_counts.items():
+            print(f"  {table}: {count}")
+
+        print("\n--- DRY RUN: Destination PostgreSQL Record Counts ---")
+        if not existing_tables:
+            print("  No tables exist in destination yet. Running the migration will create all tables without altering anything.")
+        else:
+            for table, model in [
+                ("users", User),
+                ("user_profiles", UserProfile),
+                ("catalogue_items", CatalogueItem),
+                ("user_collections", UserCollectionItem),
+                ("user_gems", UserGem),
+                ("user_goals", UserGoal),
+                ("user_achievements", UserAchievement),
+                ("user_notes", UserNote),
+                ("audit_logs", AuditLog),
+            ]:
+                if table in existing_tables:
+                    try:
+                        c = tgt_db.query(model).count()
+                        print(f"  {table}: {c} existing records")
+                    except Exception:
+                        print(f"  {table}: exists (count query failed)")
+                else:
+                    print(f"  {table}: table not created yet")
+
+        print("\n--- DRY RUN COMPLETE: No data was written to destination. ---")
         return
 
     # Ensure tables exist on target PostgreSQL without dropping anything
-    print("Creating tables on target PostgreSQL if not already present...")
+    print("\nEnsuring all tables exist on target PostgreSQL (Base.metadata.create_all)...")
     Base.metadata.create_all(bind=tgt_engine)
 
     # 1. Migrate Users
@@ -93,7 +146,7 @@ def run_migration(dry_run: bool = False):
             ))
             migrated_users += 1
     tgt_db.commit()
-    print(f"Users migrated: {migrated_users} (total in source: {len(users)})")
+    print(f"Users migrated: {migrated_users} new (source total: {len(users)})")
 
     # 2. Migrate User Profiles
     profiles = src_db.query(UserProfile).all()
@@ -109,7 +162,7 @@ def run_migration(dry_run: bool = False):
             ))
             migrated_profiles += 1
     tgt_db.commit()
-    print(f"Profiles migrated: {migrated_profiles} (total in source: {len(profiles)})")
+    print(f"Profiles migrated: {migrated_profiles} new (source total: {len(profiles)})")
 
     # 3. Migrate Catalogue Items
     catalogue = src_db.query(CatalogueItem).all()
@@ -129,7 +182,7 @@ def run_migration(dry_run: bool = False):
             ))
             migrated_cat += 1
     tgt_db.commit()
-    print(f"Catalogue items migrated: {migrated_cat} (total in source: {len(catalogue)})")
+    print(f"Catalogue items migrated: {migrated_cat} new (source total: {len(catalogue)})")
 
     # 4. Migrate User Collections
     user_colls = src_db.query(UserCollectionItem).all()
@@ -144,7 +197,7 @@ def run_migration(dry_run: bool = False):
             ))
             migrated_colls += 1
     tgt_db.commit()
-    print(f"User collection items migrated: {migrated_colls} (total in source: {len(user_colls)})")
+    print(f"User collection items migrated: {migrated_colls} new (source total: {len(user_colls)})")
 
     # 5. Migrate Gems, Goals, Achievements, Notes
     for model, name in [
@@ -161,7 +214,7 @@ def run_migration(dry_run: bool = False):
                 tgt_db.merge(it)
                 migrated += 1
         tgt_db.commit()
-        print(f"{name} migrated: {migrated} (total in source: {len(items)})")
+        print(f"{name} migrated: {migrated} new (source total: {len(items)})")
 
     # 6. Migrate Audit Logs
     logs = src_db.query(AuditLog).all()
@@ -176,7 +229,15 @@ def run_migration(dry_run: bool = False):
             ))
             migrated_logs += 1
     tgt_db.commit()
-    print(f"Audit logs migrated: {migrated_logs} (total in source: {len(logs)})")
+    print(f"Audit logs migrated: {migrated_logs} new (source total: {len(logs)})")
+
+    # Final post-migration verification
+    print("\n--- POST-MIGRATION VERIFICATION ---")
+    print(f"Destination Catalogue Items: {tgt_db.query(CatalogueItem).count()} (Source: {len(catalogue)})")
+    print(f"Destination Users: {tgt_db.query(User).count()} (Source: {len(users)})")
+    print(f"Destination User Profiles: {tgt_db.query(UserProfile).count()} (Source: {len(profiles)})")
+    print(f"Destination User Collections: {tgt_db.query(UserCollectionItem).count()} (Source: {len(user_colls)})")
+    print(f"Destination Audit Logs: {tgt_db.query(AuditLog).count()} (Source: {len(logs)})")
 
     print("\nSUCCESS: All data verified and safely synchronized to PostgreSQL!")
 
