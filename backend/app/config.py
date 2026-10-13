@@ -30,9 +30,15 @@ class Settings(BaseSettings):
                 if isinstance(parsed, list):
                     return parsed
             except (json.JSONDecodeError, ValueError):
-                # Treat as comma-separated string
                 return [o.strip() for o in raw.split(",") if o.strip()]
-        # Default: allow all (suitable for first-deploy testing; tighten after URL is known)
-        return ["*"]
+        return [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+            "https://*.vercel.app",
+        ]
 
 settings = Settings()
