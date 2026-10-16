@@ -27,6 +27,7 @@ def get_all_catalogue_items(
         "frames": [],
         "nameplates": [],
         "wallets": [],
+        "cp_wallets": [],
         "gems": [],
         "postcards": [],
         "refinements": [],

@@ -135,6 +135,7 @@ def get_collection_cp_stats(
         "icons": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
         "cards": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
         "wallets": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
+        "cp_wallets": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
         "nameplates": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
         "frames": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
         "gems": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},

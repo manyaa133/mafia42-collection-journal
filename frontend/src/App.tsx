@@ -15,6 +15,7 @@ const CATEGORY_CONFIG: Record<string, { title: string; singular: string; subtitl
   icons: { title: "Icons", singular: "Icon", subtitle: "Track every icon, unlock condition, and category.", isLogo: false },
   cards: { title: "Cards", singular: "Card", subtitle: "Character and role cards with level and playable attributes.", isLogo: true },
   wallets: { title: "Wallets", singular: "Wallet", subtitle: "Collectible wallets with logo and 3 associated detailed images.", isLogo: true },
+  cp_wallets: { title: "CP Wallets", singular: "CP Wallet", subtitle: "Collection Point tier wallets with CP range requirements and 3 associated detailed images.", isLogo: true },
   nameplates: { title: "NP", singular: "Nameplate", subtitle: "Collectible nameplates with official CP and match metadata.", isLogo: false },
   frames: { title: "Frames", singular: "Frame", subtitle: "Collectible portrait frames with CP values.", isLogo: false },
   gems: { title: "Gems", singular: "Gem", subtitle: "Gems tracking refinement levels 1 through 16.", isLogo: false },
@@ -257,6 +258,7 @@ export default function App() {
         { id: "icons", label: "Icons", icon: Sparkles, count: catalogue.icons?.length },
         { id: "cards", label: "Cards", icon: Layers, count: catalogue.cards?.length },
         { id: "wallets", label: "Wallets", icon: WalletIcon, count: catalogue.wallets?.length },
+        { id: "cp_wallets", label: "CP Wallets", icon: WalletIcon, count: catalogue.cp_wallets?.length },
         { id: "nameplates", label: "NP", icon: Tag, count: catalogue.nameplates?.length },
         { id: "frames", label: "Frames", icon: Pin, count: catalogue.frames?.length },
         { id: "gems", label: "Gems", icon: Coins, count: catalogue.gems?.length },
@@ -753,7 +755,7 @@ function WhatIHavePage({ catalogue, collection, onOpenItem, onToggleOwned, curre
 
       {/* Filter Tabs */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-        {["all", "skins", "icons", "wallets", "nameplates", "frames", "cards"].map(c => (
+        {["all", "skins", "icons", "wallets", "cp_wallets", "nameplates", "frames", "cards"].map(c => (
           <button
             key={c}
             type="button"
@@ -761,7 +763,7 @@ function WhatIHavePage({ catalogue, collection, onOpenItem, onToggleOwned, curre
             onClick={() => setSelectedCat(c)}
             style={{ textTransform: "capitalize", fontSize: 12, padding: "6px 12px" }}
           >
-            {c === "nameplates" ? "NP" : c}
+            {c === "nameplates" ? "NP" : c === "cp_wallets" ? "CP Wallets" : c}
           </button>
         ))}
       </div>
@@ -880,7 +882,7 @@ function CategoryItemsPage({
 
               <div className="m42-logo-name" title={item.name}>{item.name || "Unnamed"}</div>
               <div className="m42-logo-meta">
-                {item.cp > 0 ? `${fmtNum(item.cp)} CP` : item.character || item.condition || ""}
+                {category === "cp_wallets" ? (item.condition || "") : item.cp > 0 ? `${fmtNum(item.cp)} CP` : item.character || item.condition || ""}
               </div>
 
               <div className="m42-logo-actions">
@@ -970,7 +972,8 @@ function FocusedItemModal({
   item, category, cards, skins, collection, isOwned,
   onClose, onToggleOwned, onSelectSkin, onSelectCard, onToggleSkinOwned
 }: any) {
-  const isWallet = category === "wallets" || category === "wallet";
+  const isWallet = category === "wallets" || category === "wallet" || category === "cp_wallets";
+  const isCPWallet = category === "cp_wallets";
   const isSkin = category === "skins" || category === "skin";
   const isCard = category === "cards" || category === "card";
   const parentCard = isSkin ? (cards || []).find((c: any) => c.id === item.card_id || (c.character && c.character === item.character)) : null;
@@ -1022,7 +1025,7 @@ function FocusedItemModal({
               </div>
             )}
 
-            {item.cp > 0 && (
+            {!isCPWallet && item.cp > 0 && (
               <div style={{ marginTop: 14, textAlign: "center", fontSize: 13, color: "var(--cream)", fontWeight: 600 }}>
                 {fmtNum(item.cp)} CP
               </div>
@@ -1031,9 +1034,14 @@ function FocusedItemModal({
 
           <div>
             <div className="m42-focused-kicker">
-              {isSkin ? "Skin" : isCard ? "Card / Role" : isWallet ? "Wallet" : category}
+              {isSkin ? "Skin" : isCard ? "Card / Role" : isCPWallet ? "CP Wallet" : isWallet ? "Wallet" : category}
             </div>
             <h2 className="m42-focused-heading">{item.name}</h2>
+            {isCPWallet && item.condition && (
+              <div style={{ color: "var(--peach)", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                Required: {item.condition}
+              </div>
+            )}
 
             {isSkin && (
               <div style={{ marginBottom: 12, fontSize: 13, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
