@@ -9,11 +9,94 @@ from backend.app.auth import get_current_user
 
 router = APIRouter(prefix="/collection", tags=["Personal Collection"])
 
+CP_CATEGORIES = {"skins", "gems", "frames", "nameplates", "wallets"}
+
+def get_cp_wallet_id_for_cp(user_cp: int) -> str:
+    """Determine the eligible CP Wallet ID based on total collection points."""
+    if user_cp >= 250000:
+        return "cp_wallet_08"
+    elif user_cp >= 125000:
+        return "cp_wallet_07"
+    elif user_cp >= 25000:
+        return "cp_wallet_06"
+    elif user_cp >= 15000:
+        return "cp_wallet_05"
+    elif user_cp >= 7500:
+        return "cp_wallet_04"
+    elif user_cp >= 2500:
+        return "cp_wallet_03"
+    elif user_cp >= 500:
+        return "cp_wallet_02"
+    else:
+        return "cp_wallet_01"
+
+def calculate_user_cp(user_id: int, db: Session) -> int:
+    """Calculate the total CP earned by the user across all eligible categories."""
+    owned_items = (
+        db.query(CatalogueItem.cp)
+        .join(UserCollectionItem, UserCollectionItem.item_id == CatalogueItem.id)
+        .filter(
+            UserCollectionItem.user_id == user_id,
+            UserCollectionItem.owned == True,
+            CatalogueItem.category.in_(CP_CATEGORIES)
+        )
+        .all()
+    )
+    return sum(int(item[0] or 0) for item in owned_items)
+
+def sync_user_cp_wallet(user_id: int, db: Session) -> str:
+    """Ensure exactly one CP wallet matching the user's active CP bracket is owned."""
+    user_cp = calculate_user_cp(user_id, db)
+    eligible_wallet_id = get_cp_wallet_id_for_cp(user_cp)
+
+    cp_wallets = (
+        db.query(CatalogueItem.id)
+        .filter(CatalogueItem.category == "cp_wallets")
+        .all()
+    )
+    cp_wallet_ids = [w[0] for w in cp_wallets]
+    if not cp_wallet_ids:
+        cp_wallet_ids = [f"cp_wallet_{i:02d}" for i in range(1, 9)]
+
+    existing_cp_records = (
+        db.query(UserCollectionItem)
+        .filter(
+            UserCollectionItem.user_id == user_id,
+            UserCollectionItem.item_id.in_(cp_wallet_ids)
+        )
+        .all()
+    )
+    record_map = {r.item_id: r for r in existing_cp_records}
+
+    # Ensure the single eligible CP wallet is marked owned
+    target_record = record_map.get(eligible_wallet_id)
+    if target_record:
+        if not target_record.owned:
+            target_record.owned = True
+    else:
+        new_record = UserCollectionItem(
+            user_id=user_id,
+            item_id=eligible_wallet_id,
+            owned=True,
+        )
+        db.add(new_record)
+
+    # Ensure all other CP wallets are marked unowned
+    for cp_id in cp_wallet_ids:
+        if cp_id != eligible_wallet_id and cp_id in record_map:
+            if record_map[cp_id].owned:
+                record_map[cp_id].owned = False
+
+    db.commit()
+    return eligible_wallet_id
+
 @router.get("", response_model=Dict[str, Any])
 def get_user_collection(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    sync_user_cp_wallet(current_user.id, db)
+
     items = db.query(UserCollectionItem).filter(
         UserCollectionItem.user_id == current_user.id,
         UserCollectionItem.owned == True
@@ -45,6 +128,12 @@ def toggle_item_owned(
     if not cat_item:
         raise HTTPException(status_code=404, detail="Catalogue item not found")
 
+    if cat_item.category == "cp_wallets":
+        raise HTTPException(
+            status_code=400,
+            detail="CP Wallets are automatically unlocked based on your total Collection Points and cannot be manually toggled."
+        )
+
     record = db.query(UserCollectionItem).filter(
         UserCollectionItem.user_id == current_user.id,
         UserCollectionItem.item_id == item_id
@@ -63,6 +152,9 @@ def toggle_item_owned(
     db.commit()
     db.refresh(record)
 
+    # Immediately recalculate and update CP wallet ownership
+    sync_user_cp_wallet(current_user.id, db)
+
     return CollectionItemResponse(
         item_id=record.item_id,
         owned=record.owned,
@@ -80,6 +172,12 @@ def update_collection_item(
     cat_item = db.query(CatalogueItem).filter(CatalogueItem.id == item_id).first()
     if not cat_item:
         raise HTTPException(status_code=404, detail="Catalogue item not found")
+
+    if cat_item.category == "cp_wallets":
+        raise HTTPException(
+            status_code=400,
+            detail="CP Wallets are automatically unlocked based on your total Collection Points and cannot be manually edited."
+        )
 
     record = db.query(UserCollectionItem).filter(
         UserCollectionItem.user_id == current_user.id,
@@ -105,6 +203,9 @@ def update_collection_item(
     db.commit()
     db.refresh(record)
 
+    # Immediately recalculate and update CP wallet ownership
+    sync_user_cp_wallet(current_user.id, db)
+
     return CollectionItemResponse(
         item_id=record.item_id,
         owned=record.owned,
@@ -117,6 +218,9 @@ def get_collection_cp_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # Ensure active CP tier wallet is synchronized
+    sync_user_cp_wallet(current_user.id, db)
+
     # Fetch all catalogue items
     all_items = db.query(CatalogueItem).all()
     # Fetch user's owned records
@@ -127,8 +231,8 @@ def get_collection_cp_stats(
         ).all()
     )
 
-    # Categories contributing to CP: skins, gems, frames, nameplates
-    cp_categories = {"skins", "gems", "frames", "nameplates"}
+    # Categories contributing to CP: skins, gems, frames, nameplates, wallets
+    cp_categories = {"skins", "gems", "frames", "nameplates", "wallets"}
 
     category_breakdown = {
         "skins": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},

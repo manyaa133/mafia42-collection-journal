@@ -194,12 +194,13 @@ def seed_database(db: Session):
         ]
         for num, name, folder_name in REGULAR_WALLETS:
             has_asset = num != 24
+            cp_val = 777 if num in (52, 53, 54) else 500
             db.add(CatalogueItem(
                 id=f"wallet_{num:02d}",
                 category="wallets",
                 name=name,
                 description="",
-                cp=0,
+                cp=cp_val,
                 image=f"/assets/wallets/{folder_name}/logo.png" if has_asset else "",
                 logo_image=f"/assets/wallets/{folder_name}/logo.png" if has_asset else "",
                 wallet_images=[
@@ -216,23 +217,23 @@ def seed_database(db: Session):
     cp_wallet_count = db.query(CatalogueItem).filter(CatalogueItem.category == "cp_wallets").count()
     if cp_wallet_count == 0:
         CP_WALLETS = [
-            (1, "Collection Point Level 0 Wallet", "01-collection-point-level-0-wallet", "0–499 CP", 0),
-            (2, "Collection Point Level 1 Wallet", "02-collection-point-level-1-wallet", "500–2,499 CP", 500),
-            (3, "Collection Point Level 2 Wallet", "03-collection-point-level-2-wallet", "2,500–7,499 CP", 2500),
-            (4, "Collection Point Level 3 Wallet", "04-collection-point-level-3-wallet", "7,500–14,999 CP", 7500),
-            (5, "Collection Point Level 4 Wallet", "05-collection-point-level-4-wallet", "15,000–24,999 CP", 15000),
-            (6, "Collection Point Level 5 Wallet", "06-collection-point-level-5-wallet", "25,000–124,999 CP", 25000),
-            (7, "Master Wallet", "07-master-wallet", "125,000–249,999 CP", 125000),
-            (8, "Grand Master Wallet", "08-grand-master-wallet", "250,000 CP or more", 250000),
+            (1, "Collection Point Level 0 Wallet", "01-collection-point-level-0-wallet", "0–499 CP"),
+            (2, "Collection Point Level 1 Wallet", "02-collection-point-level-1-wallet", "500–2,499 CP"),
+            (3, "Collection Point Level 2 Wallet", "03-collection-point-level-2-wallet", "2,500–7,499 CP"),
+            (4, "Collection Point Level 3 Wallet", "04-collection-point-level-3-wallet", "7,500–14,999 CP"),
+            (5, "Collection Point Level 4 Wallet", "05-collection-point-level-4-wallet", "15,000–24,999 CP"),
+            (6, "Collection Point Level 5 Wallet", "06-collection-point-level-5-wallet", "25,000–124,999 CP"),
+            (7, "Master Wallet", "07-master-wallet", "125,000–249,999 CP"),
+            (8, "Grand Master Wallet", "08-grand-master-wallet", "250,000 CP or more"),
         ]
-        for num, name, folder_name, cp_range, min_cp in CP_WALLETS:
+        for num, name, folder_name, cp_range in CP_WALLETS:
             db.add(CatalogueItem(
                 id=f"cp_wallet_{num:02d}",
                 category="cp_wallets",
                 name=name,
                 description="",
                 condition=cp_range,
-                cp=min_cp,
+                cp=0,
                 image=f"/assets/wallets/cp-wallets/{folder_name}/logo.png",
                 logo_image=f"/assets/wallets/cp-wallets/{folder_name}/logo.png",
                 wallet_images=[
@@ -244,4 +245,21 @@ def seed_database(db: Session):
             ))
         db.commit()
         print("Official CP wallets seeded.")
+
+    # 5. Ensure existing wallet CP values match specification
+    wallets = db.query(CatalogueItem).filter(CatalogueItem.category == "wallets").all()
+    for w in wallets:
+        try:
+            num = int(w.id.split("_")[1])
+            expected_cp = 777 if num in (52, 53, 54) else 500
+            if w.cp != expected_cp:
+                w.cp = expected_cp
+        except Exception:
+            pass
+
+    cp_wallets = db.query(CatalogueItem).filter(CatalogueItem.category == "cp_wallets").all()
+    for cp_w in cp_wallets:
+        if cp_w.cp != 0:
+            cp_w.cp = 0
+    db.commit()
 

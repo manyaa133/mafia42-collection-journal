@@ -1,5 +1,12 @@
+import os
+import sys
 import uuid
 import pytest
+
+WORKSPACE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if WORKSPACE_DIR not in sys.path:
+    sys.path.insert(0, WORKSPACE_DIR)
+
 from fastapi.testclient import TestClient
 from backend.app.main import app
 from backend.app.config import settings
@@ -396,4 +403,148 @@ def test_15_icon_move_owner_security_and_persistence():
     icons_restored = client.get("/api/catalogue/icons").json()
     assert icons_restored[0]["id"] == icon_0["id"]
     assert icons_restored[1]["id"] == icon_1["id"]
+
+def test_16_regular_and_cp_wallet_cp_values_and_integration():
+    """TEST 16: Regular wallets have 500 CP (or 777 CP for 52-54), CP wallets have 0 CP,
+    toggling regular wallets integrates into CP counter, and CP wallets reject manual toggle."""
+    # 1. Check catalogue wallet values
+    wallets = client.get("/api/catalogue/wallets").json()
+    assert len(wallets) == 55
+    for w in wallets:
+        num = int(w["id"].split("_")[1])
+        if num in (52, 53, 54):
+            assert w["cp"] == 777, f"Wallet {w['id']} expected 777 CP, got {w['cp']}"
+        else:
+            assert w["cp"] == 500, f"Wallet {w['id']} expected 500 CP, got {w['cp']}"
+
+    # 2. Check CP wallets have 0 CP
+    cp_wallets = client.get("/api/catalogue/cp_wallets").json()
+    assert len(cp_wallets) == 8
+    for cp_w in cp_wallets:
+        assert cp_w["cp"] == 0, f"CP Wallet {cp_w['id']} must have 0 CP, got {cp_w['cp']}"
+
+    # 3. New registered user has 0 CP and auto-qualifies for Level 0 (cp_wallet_01)
+    uid = uuid.uuid4().hex[:6]
+    reg = client.post("/api/auth/register", json={
+        "email": f"wallet_user_{uid}@example.com",
+        "username": f"WalletUser_{uid}",
+        "password": "Password123!"
+    })
+    assert reg.status_code == 200
+    h = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+
+    col0 = client.get("/api/collection", headers=h).json()
+    assert "cp_wallet_01" in col0["owned_item_ids"]
+    assert "cp_wallet_02" not in col0["owned_item_ids"]
+    stats0 = client.get("/api/collection/stats", headers=h).json()
+    assert stats0["user_cp"] == 0
+    assert stats0["total_cp"] >= 28331  # Includes wallets max_cp
+
+    # 4. Toggle regular wallet_01 (500 CP) ON
+    t1 = client.post("/api/collection/toggle/wallet_01", headers=h)
+    assert t1.status_code == 200
+    assert t1.json()["owned"] is True
+
+    stats1 = client.get("/api/collection/stats", headers=h).json()
+    assert stats1["user_cp"] == 500
+    assert stats1["category_breakdown"]["wallets"]["user_cp"] == 500
+    assert stats1["category_breakdown"]["wallets"]["owned"] == 1
+
+    # User reached 500 CP -> auto-unlocks Level 1 (cp_wallet_02), cp_wallet_01 removed
+    col1 = client.get("/api/collection", headers=h).json()
+    assert "cp_wallet_02" in col1["owned_item_ids"]
+    assert "cp_wallet_01" not in col1["owned_item_ids"]
+
+    # 5. Toggle regular wallet_52 (777 CP) ON
+    t2 = client.post("/api/collection/toggle/wallet_52", headers=h)
+    assert t2.status_code == 200
+    stats2 = client.get("/api/collection/stats", headers=h).json()
+    assert stats2["user_cp"] == 1277
+    assert stats2["category_breakdown"]["wallets"]["user_cp"] == 1277
+
+    # 6. Toggle regular wallet_01 (500 CP) and wallet_52 (777 CP) OFF -> downgrades back to cp_wallet_01
+    client.post("/api/collection/toggle/wallet_01", headers=h)
+    client.post("/api/collection/toggle/wallet_52", headers=h)
+
+    stats3 = client.get("/api/collection/stats", headers=h).json()
+    assert stats3["user_cp"] == 0
+    col3 = client.get("/api/collection", headers=h).json()
+    assert "cp_wallet_01" in col3["owned_item_ids"]
+    assert "cp_wallet_02" not in col3["owned_item_ids"]
+
+    # 7. Disallow manual toggle of CP Wallets
+    manual_toggle = client.post("/api/collection/toggle/cp_wallet_04", headers=h)
+    assert manual_toggle.status_code == 400
+    assert "automatically unlocked" in manual_toggle.json()["detail"].lower()
+
+def test_17_cp_wallet_automatic_qualification_and_boundaries():
+    """TEST 17: Thoroughly verify all CP tier boundary thresholds for auto-awarding CP wallets:
+    0–499 -> cp_wallet_01
+    500–2,499 -> cp_wallet_02
+    2,500–7,499 -> cp_wallet_03
+    7,500–14,999 -> cp_wallet_04
+    15,000–24,999 -> cp_wallet_05
+    25,000–124,999 -> cp_wallet_06
+    125,000–249,999 -> cp_wallet_07
+    250,000+ -> cp_wallet_08"""
+    from backend.app.routers.collection import get_cp_wallet_id_for_cp
+
+    # Check function boundary conditions directly
+    assert get_cp_wallet_id_for_cp(0) == "cp_wallet_01"
+    assert get_cp_wallet_id_for_cp(499) == "cp_wallet_01"
+    assert get_cp_wallet_id_for_cp(500) == "cp_wallet_02"
+    assert get_cp_wallet_id_for_cp(2499) == "cp_wallet_02"
+    assert get_cp_wallet_id_for_cp(2500) == "cp_wallet_03"
+    assert get_cp_wallet_id_for_cp(7499) == "cp_wallet_03"
+    assert get_cp_wallet_id_for_cp(7500) == "cp_wallet_04"
+    assert get_cp_wallet_id_for_cp(14999) == "cp_wallet_04"
+    assert get_cp_wallet_id_for_cp(15000) == "cp_wallet_05"
+    assert get_cp_wallet_id_for_cp(24999) == "cp_wallet_05"
+    assert get_cp_wallet_id_for_cp(25000) == "cp_wallet_06"
+    assert get_cp_wallet_id_for_cp(124999) == "cp_wallet_06"
+    assert get_cp_wallet_id_for_cp(125000) == "cp_wallet_07"
+    assert get_cp_wallet_id_for_cp(249999) == "cp_wallet_07"
+    assert get_cp_wallet_id_for_cp(250000) == "cp_wallet_08"
+    assert get_cp_wallet_id_for_cp(500000) == "cp_wallet_08"
+
+    # End-to-end API test with dynamic CP values
+    login_owner = client.post("/api/auth/login", json={
+        "username_or_email": settings.INITIAL_OWNER_EMAIL,
+        "password": settings.INITIAL_OWNER_PASSWORD,
+    })
+    owner_headers = {"Authorization": f"Bearer {login_owner.json()['access_token']}"}
+
+    uid = uuid.uuid4().hex[:6]
+    reg = client.post("/api/auth/register", json={
+        "email": f"tier_user_{uid}@example.com",
+        "username": f"TierUser_{uid}",
+        "password": "Password123!"
+    })
+    user_headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+
+    # Test item creation by owner to hit exact boundary values
+    test_skin_id = f"test_boundary_skin_{uid}"
+    client.post("/api/admin/catalogue", json={
+        "id": test_skin_id,
+        "category": "skins",
+        "name": "Boundary Test Skin",
+        "cp": 2500  # Exactly 2500 CP -> Level 2 (cp_wallet_03)
+    }, headers=owner_headers)
+
+    try:
+        # User toggles test item ON
+        client.post(f"/api/collection/toggle/{test_skin_id}", headers=user_headers)
+        col = client.get("/api/collection", headers=user_headers).json()
+        assert "cp_wallet_03" in col["owned_item_ids"]
+        assert "cp_wallet_01" not in col["owned_item_ids"]
+        assert "cp_wallet_02" not in col["owned_item_ids"]
+
+        # Exactly ONE CP wallet owned
+        owned_cp_wallets = [i for i in col["owned_item_ids"] if i.startswith("cp_wallet_")]
+        assert len(owned_cp_wallets) == 1
+        assert owned_cp_wallets[0] == "cp_wallet_03"
+    finally:
+        # Cleanup
+        client.delete(f"/api/admin/catalogue/{test_skin_id}", headers=owner_headers)
+
 

@@ -27,6 +27,17 @@ function fmtNum(n: number = 0): string {
   return Number(n || 0).toLocaleString();
 }
 
+function getCPWalletIdForCp(cp: number): string {
+  if (cp >= 250000) return "cp_wallet_08";
+  if (cp >= 125000) return "cp_wallet_07";
+  if (cp >= 25000) return "cp_wallet_06";
+  if (cp >= 15000) return "cp_wallet_05";
+  if (cp >= 7500) return "cp_wallet_04";
+  if (cp >= 2500) return "cp_wallet_03";
+  if (cp >= 500) return "cp_wallet_02";
+  return "cp_wallet_01";
+}
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeNav, setActiveNav] = useState<string>("home");
@@ -103,26 +114,84 @@ export default function App() {
       return;
     }
 
-    // Optimistic UI update
+    // CP Wallets cannot be manually toggled; they are automatically awarded by total CP
+    if (itemId.startsWith("cp_wallet_")) {
+      return;
+    }
+
+    // Find the item to determine its category and CP value
+    const allCatalogueItems = [
+      ...(catalogue.skins || []),
+      ...(catalogue.icons || []),
+      ...(catalogue.cards || []),
+      ...(catalogue.wallets || []),
+      ...(catalogue.cp_wallets || []),
+      ...(catalogue.nameplates || []),
+      ...(catalogue.frames || []),
+      ...(catalogue.gems || []),
+      ...(catalogue.postcards || []),
+      ...(catalogue.refinements || []),
+    ];
+    const targetItem = allCatalogueItems.find(it => it.id === itemId);
+    const itemCp = Number(targetItem?.cp || 0);
+    const itemCat = targetItem?.category || "";
+    const isCpEligible = ["skins", "gems", "frames", "nameplates", "wallets"].includes(itemCat);
+
     const isCurrentlyOwned = collection.owned_item_ids.includes(itemId);
-    const newOwnedIds = isCurrentlyOwned
+    const cpDelta = isCpEligible ? (isCurrentlyOwned ? -itemCp : itemCp) : 0;
+    const currentUserCp = (stats?.user_cp || 0) + cpDelta;
+    const newUserCp = Math.max(0, currentUserCp);
+
+    // Compute newly eligible CP wallet based on updated total CP
+    const newCpWalletId = getCPWalletIdForCp(newUserCp);
+    const cpWalletIds = ["cp_wallet_01", "cp_wallet_02", "cp_wallet_03", "cp_wallet_04", "cp_wallet_05", "cp_wallet_06", "cp_wallet_07", "cp_wallet_08"];
+
+    // Update owned IDs: toggle itemId, ensure exactly the single active CP wallet is present
+    let nextOwnedIds = isCurrentlyOwned
       ? collection.owned_item_ids.filter(id => id !== itemId)
       : [...collection.owned_item_ids, itemId];
 
+    nextOwnedIds = nextOwnedIds.filter(id => !cpWalletIds.includes(id));
+    nextOwnedIds.push(newCpWalletId);
+
+    const nextItems = { ...collection.items };
+    nextItems[itemId] = { item_id: itemId, owned: !isCurrentlyOwned };
+    for (const cpId of cpWalletIds) {
+      nextItems[cpId] = { item_id: cpId, owned: cpId === newCpWalletId };
+    }
+
     setCollection(prev => ({
       ...prev,
-      owned_item_ids: newOwnedIds,
-      items: {
-        ...prev.items,
-        [itemId]: { item_id: itemId, owned: !isCurrentlyOwned }
-      }
+      owned_item_ids: nextOwnedIds,
+      items: nextItems,
     }));
+
+    // Optimistically update stats
+    if (stats) {
+      const newCompletionPct = stats.total_cp > 0 ? (newUserCp / stats.total_cp) * 100 : 0;
+      const updatedCatBreakdown = { ...stats.category_breakdown };
+      if (itemCat && updatedCatBreakdown[itemCat]) {
+        updatedCatBreakdown[itemCat] = {
+          ...updatedCatBreakdown[itemCat],
+          owned: updatedCatBreakdown[itemCat].owned + (isCurrentlyOwned ? -1 : 1),
+          user_cp: updatedCatBreakdown[itemCat].user_cp + cpDelta,
+        };
+      }
+      setStats({
+        ...stats,
+        user_cp: newUserCp,
+        completion_percentage: Math.round(newCompletionPct * 100) / 100,
+        owned_items: stats.owned_items + (isCurrentlyOwned ? -1 : 1),
+        category_breakdown: updatedCatBreakdown,
+      });
+    }
 
     try {
       await api.toggleOwned(itemId);
-      // Refresh authoritative stats
-      const updatedStats = await api.getStats();
+      // Refresh authoritative stats and collection from server
+      const [updatedStats, updatedCol] = await Promise.all([api.getStats(), api.getCollection()]);
       setStats(updatedStats);
+      setCollection(updatedCol);
     } catch (err) {
       console.error("Failed to toggle item:", err);
       // Revert on error
@@ -521,6 +590,7 @@ export default function App() {
           cards={catalogue.cards || []}
           skins={catalogue.skins || []}
           collection={collection}
+          stats={stats}
           isOwned={collection.owned_item_ids.includes(focusedItem.item.id)}
           onClose={() => setFocusedItem(null)}
           onToggleOwned={() => handleToggleOwned(focusedItem.item.id)}
@@ -786,12 +856,18 @@ function WhatIHavePage({ catalogue, collection, onOpenItem, onToggleOwned, curre
                   <span className="m42-entry-status-badge">Owned</span>
                 </button>
                 <div className="m42-logo-name">{item.name}</div>
-                <div className="m42-logo-meta">{item.cp > 0 ? `${fmtNum(item.cp)} CP` : item.character || category}</div>
+                <div className="m42-logo-meta">{category === "cp_wallets" ? (item.condition || "CP Wallet") : item.cp > 0 ? `${fmtNum(item.cp)} CP` : item.character || category}</div>
                 <div className="m42-logo-actions">
-                  <label className="m42-owned-toggle checked" onClick={e => e.stopPropagation()}>
-                    <input type="checkbox" checked={true} onChange={() => onToggleOwned(item.id)} />
-                    <span>I Have</span>
-                  </label>
+                  {category === "cp_wallets" ? (
+                    <span className="m42-owned-toggle checked" style={{ cursor: "default" }} title="Active CP Tier (automatically awarded based on total CP)">
+                      <span>Active Tier</span>
+                    </span>
+                  ) : (
+                    <label className="m42-owned-toggle checked" onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" checked={true} onChange={() => onToggleOwned(item.id)} />
+                      <span>I Have</span>
+                    </label>
+                  )}
                 </div>
               </div>
             );
@@ -950,14 +1026,25 @@ function CategoryItemsPage({
                     </button>
                   </>
                 )}
-                <label className={`m42-owned-toggle ${isOwned ? "checked" : ""}`} onClick={e => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={isOwned}
-                    onChange={() => onToggleOwned(item.id)}
-                  />
-                  <span>I Have</span>
-                </label>
+                {category === "cp_wallets" ? (
+                  <span
+                    className={`m42-owned-toggle ${isOwned ? "checked" : ""}`}
+                    style={{ cursor: "default", opacity: isOwned ? 1 : 0.6 }}
+                    title={isOwned ? "Active CP Tier (automatically awarded based on total CP)" : `Requires ${item.condition}`}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <span>{isOwned ? "Active Tier" : "Locked"}</span>
+                  </span>
+                ) : (
+                  <label className={`m42-owned-toggle ${isOwned ? "checked" : ""}`} onClick={e => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={isOwned}
+                      onChange={() => onToggleOwned(item.id)}
+                    />
+                    <span>I Have</span>
+                  </label>
+                )}
               </div>
             </div>
           );
@@ -969,7 +1056,7 @@ function CategoryItemsPage({
 
 // 4. Focused Item View Modal (Supports Wallets with 3 detail images and Card-Skin associations!)
 function FocusedItemModal({
-  item, category, cards, skins, collection, isOwned,
+  item, category, cards, skins, collection, stats, isOwned,
   onClose, onToggleOwned, onSelectSkin, onSelectCard, onToggleSkinOwned
 }: any) {
   const isWallet = category === "wallets" || category === "wallet" || category === "cp_wallets";
@@ -1063,7 +1150,7 @@ function FocusedItemModal({
 
             <div className="m42-focused-pills">
               <span className="m42-focused-pill" style={{ background: isOwned ? "rgba(134,185,177,0.2)" : "var(--surf-2)" }}>
-                {isOwned ? "I Have This" : "Not Owned"}
+                {isCPWallet ? (isOwned ? "★ Active CP Tier" : "Locked Tier") : (isOwned ? "I Have This" : "Not Owned")}
               </span>
               {item.rarity && <span className="m42-focused-pill">Rarity: {item.rarity}</span>}
               {item.condition && <span className="m42-focused-pill">Condition: {item.condition}</span>}
@@ -1074,14 +1161,36 @@ function FocusedItemModal({
             )}
 
             <div style={{ marginTop: 24 }}>
-              <button
-                type="button"
-                className={`m42-btn ${isOwned ? "m42-btn-ghost" : "m42-btn-primary"}`}
-                onClick={onToggleOwned}
-                style={{ width: "100%", justifyContent: "center", padding: "10px 16px" }}
-              >
-                {isOwned ? "Remove from My Collection" : "Mark as Owned (I Have This)"}
-              </button>
+              {isCPWallet ? (
+                <div style={{
+                  padding: "14px 18px",
+                  borderRadius: 8,
+                  background: isOwned ? "rgba(134,185,177,0.15)" : "var(--surf-2)",
+                  border: `1px solid ${isOwned ? "var(--accent)" : "var(--line)"}`,
+                  textAlign: "center"
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: isOwned ? "var(--accent)" : "var(--text-2)" }}>
+                    {isOwned ? "★ Active Collection Point Tier" : "Locked CP Tier Wallet"}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--cream)", marginTop: 6 }}>
+                    {isOwned
+                      ? `Automatically unlocked for your account (${stats ? fmtNum(stats.user_cp) : 0} CP earned)`
+                      : `Requires ${item.condition || "higher CP"}. Current total: ${stats ? fmtNum(stats.user_cp) : 0} CP`}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
+                    CP Tier Wallets are awarded automatically and cannot be manually toggled.
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={`m42-btn ${isOwned ? "m42-btn-ghost" : "m42-btn-primary"}`}
+                  onClick={onToggleOwned}
+                  style={{ width: "100%", justifyContent: "center", padding: "10px 16px" }}
+                >
+                  {isOwned ? "Remove from My Collection" : "Mark as Owned (I Have This)"}
+                </button>
+              )}
             </div>
 
             {/* Associated Skins Section for Cards */}
@@ -1541,7 +1650,7 @@ function StatisticsPage({ stats, catalogue, collection }: any) {
       <div className="m42-section-head">
         <div>
           <h1 className="m42-section-title m42-serif">Collection Statistics</h1>
-          <p className="m42-section-sub">Collection CP combines Skins + Gems + Frames + Nameplates. Refinements and PC do not contribute.</p>
+          <p className="m42-section-sub">Collection CP combines Skins + Wallets + Gems + Frames + Nameplates. Cards and CP Wallets have 0 CP.</p>
         </div>
       </div>
 
@@ -1549,7 +1658,7 @@ function StatisticsPage({ stats, catalogue, collection }: any) {
         <div className="m42-stat-card">
           <div className="m42-stat-label">Total CP</div>
           <div className="m42-stat-value">{stats ? fmtNum(stats.total_cp) : 0} CP</div>
-          <div className="m42-stat-sub">Across Skins, Gems, Frames &amp; Nameplates</div>
+          <div className="m42-stat-sub">Across Skins, Wallets, Gems, Frames &amp; Nameplates</div>
         </div>
         <div className="m42-stat-card">
           <div className="m42-stat-label">CP I Have</div>
@@ -1584,7 +1693,7 @@ function StatisticsPage({ stats, catalogue, collection }: any) {
                   const pct = cStats.total > 0 ? (cStats.owned / cStats.total) * 100 : 0;
                   return (
                     <tr key={cat}>
-                      <td style={{ textTransform: "capitalize", fontWeight: 600 }}>{cat === "nameplates" ? "NP" : cat}</td>
+                      <td style={{ textTransform: "capitalize", fontWeight: 600 }}>{cat === "nameplates" ? "NP" : cat === "cp_wallets" ? "CP Wallets" : cat}</td>
                       <td>{cStats.owned}</td>
                       <td>{cStats.total}</td>
                       <td>{fmtNum(cStats.user_cp)}</td>
