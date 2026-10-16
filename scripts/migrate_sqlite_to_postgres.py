@@ -181,6 +181,12 @@ def run_migration(dry_run: bool = False):
                 updated_at=item.updated_at
             ))
             migrated_cat += 1
+        else:
+            exists.name = item.name
+            exists.image = item.image
+            exists.logo_image = item.logo_image
+            exists.wallet_images = item.wallet_images
+            exists.cp = item.cp
     tgt_db.commit()
     print(f"Catalogue items migrated: {migrated_cat} new (source total: {len(catalogue)})")
 
