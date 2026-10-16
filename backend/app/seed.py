@@ -194,7 +194,7 @@ def seed_database(db: Session):
         ]
         for num, name, folder_name in REGULAR_WALLETS:
             has_asset = num != 24
-            cp_val = 777 if num in (52, 53, 54) else 500
+            cp_val = 777 if num in (52, 53, 54, 55) else 500
             db.add(CatalogueItem(
                 id=f"wallet_{num:02d}",
                 category="wallets",
@@ -251,7 +251,7 @@ def seed_database(db: Session):
     for w in wallets:
         try:
             num = int(w.id.split("_")[1])
-            expected_cp = 777 if num in (52, 53, 54) else 500
+            expected_cp = 777 if num in (52, 53, 54, 55) else 500
             if w.cp != expected_cp:
                 w.cp = expected_cp
         except Exception:

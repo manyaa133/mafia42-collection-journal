@@ -412,7 +412,7 @@ def test_16_regular_and_cp_wallet_cp_values_and_integration():
     assert len(wallets) == 55
     for w in wallets:
         num = int(w["id"].split("_")[1])
-        if num in (52, 53, 54):
+        if num in (52, 53, 54, 55):
             assert w["cp"] == 777, f"Wallet {w['id']} expected 777 CP, got {w['cp']}"
         else:
             assert w["cp"] == 500, f"Wallet {w['id']} expected 500 CP, got {w['cp']}"
@@ -438,7 +438,7 @@ def test_16_regular_and_cp_wallet_cp_values_and_integration():
     assert "cp_wallet_02" not in col0["owned_item_ids"]
     stats0 = client.get("/api/collection/stats", headers=h).json()
     assert stats0["user_cp"] == 0
-    assert stats0["total_cp"] >= 28331  # Includes wallets max_cp
+    assert stats0["total_cp"] >= 28608  # Includes wallets max_cp (51 * 500 + 4 * 777 = 28608)
 
     # 4. Toggle regular wallet_01 (500 CP) ON
     t1 = client.post("/api/collection/toggle/wallet_01", headers=h)
