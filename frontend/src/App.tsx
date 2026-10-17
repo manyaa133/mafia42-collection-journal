@@ -871,7 +871,7 @@ function WhatIHavePage({ catalogue, collection, onOpenItem, onToggleOwned, curre
                   {imgSrc ? <img src={imgSrc} alt="" loading="lazy" /> : <div className="m42-logo-placeholder">No image</div>}
                   <span className="m42-entry-status-badge">Owned</span>
                 </button>
-                <div className="m42-logo-name">{item.name}</div>
+                <div className="m42-logo-name" title={item.name} onClick={() => onOpenItem(item, category)} style={{ cursor: "pointer" }}>{item.name}</div>
                 <div className="m42-logo-meta">{category === "cp_wallets" ? (item.condition || "CP Wallet") : item.cp > 0 ? `${fmtNum(item.cp)} CP` : item.character || category}</div>
                 <div className="m42-logo-actions">
                   {category === "cp_wallets" ? (
@@ -972,7 +972,7 @@ function CategoryItemsPage({
                 )}
               </button>
 
-              <div className="m42-logo-name" title={item.name}>{item.name || "Unnamed"}</div>
+              <div className="m42-logo-name" title={item.name} onClick={() => onOpenItem(item)} style={{ cursor: "pointer" }}>{item.name || "Unnamed"}</div>
               <div className="m42-logo-meta">
                 {category === "cp_wallets" ? (item.condition || "") : item.cp > 0 ? `${fmtNum(item.cp)} CP` : item.character || item.condition || ""}
               </div>
@@ -1088,6 +1088,12 @@ function FocusedItemModal({
     );
   }, [isCard, item, skins]);
 
+  const [selectedWalletImage, setSelectedWalletImage] = useState<string | null>(null);
+
+  const mainImageSrc = isWallet && selectedWalletImage 
+    ? selectedWalletImage 
+    : (isWallet ? (item.logo_image || item.image) : (item.image || item.logo_image));
+
   return (
     <div className="m42-modal-overlay" onClick={onClose}>
       <div className="m42-focused-card" style={{ maxWidth: isCard && associatedSkins.length > 0 ? 820 : 700 }} onClick={e => e.stopPropagation()}>
@@ -1102,29 +1108,54 @@ function FocusedItemModal({
 
         <div className="m42-focused-layout">
           <div>
-            <div className="m42-focused-image">
-              {(isWallet ? (item.logo_image || item.image) : (item.image || item.logo_image)) ? (
-                <img src={isWallet ? (item.logo_image || item.image) : (item.image || item.logo_image)} alt={item.name} />
+            <div className={`m42-focused-image ${isWallet && selectedWalletImage ? "wallet-expanded" : ""}`}>
+              {mainImageSrc ? (
+                <img src={mainImageSrc} alt={item.name} />
               ) : (
                 <div className="m42-image-placeholder">No image added</div>
               )}
             </div>
 
-            {/* Wallet 3 Detailed Images */}
-            {isWallet && (
-              <div className="m42-wallet-detail-images">
-                {[0, 1, 2].map(i => {
-                  const detailImg = item.wallet_images?.[i];
-                  return (
-                    <div key={i} className="m42-wallet-detail-image">
-                      {detailImg ? (
-                        <img src={detailImg} alt={`Detail ${i + 1}`} />
-                      ) : (
-                        <span>Image {i + 1}</span>
-                      )}
-                    </div>
-                  );
-                })}
+            {/* Wallet 3 Detailed Images with Interactive Tab Switcher */}
+            {isWallet && item.wallet_images && item.wallet_images.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, fontSize: 11, color: "var(--text-3)" }}>
+                  <span>{selectedWalletImage ? "Expanded View" : "Click view to expand:"}</span>
+                  {selectedWalletImage && (
+                    <button
+                      type="button"
+                      className="m42-btn m42-btn-ghost"
+                      style={{ padding: "1px 6px", fontSize: 10, color: "var(--peach)" }}
+                      onClick={() => setSelectedWalletImage(null)}
+                    >
+                      Show Logo
+                    </button>
+                  )}
+                </div>
+                <div className="m42-wallet-detail-images">
+                  {[0, 1, 2].map(i => {
+                    const detailImg = item.wallet_images?.[i];
+                    const tabLabels = ["Profile View", "Cards View", "Badges View"];
+                    const isActive = selectedWalletImage === detailImg && !!detailImg;
+                    return (
+                      <div
+                        key={i}
+                        className={`m42-wallet-detail-image ${isActive ? "active" : ""}`}
+                        onClick={() => detailImg && setSelectedWalletImage(isActive ? null : detailImg)}
+                        title={detailImg ? `Click to view ${tabLabels[i]}` : `Detail ${i + 1}`}
+                      >
+                        {detailImg ? (
+                          <>
+                            <img src={detailImg} alt={tabLabels[i]} />
+                            <span className="m42-wallet-tab-pill">{`Tab ${i + 1}`}</span>
+                          </>
+                        ) : (
+                          <span>Image {i + 1}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
