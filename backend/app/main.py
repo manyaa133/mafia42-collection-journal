@@ -86,6 +86,14 @@ async def serve_assets(file_path: str):
         mime, _ = mimetypes.guess_type(game_path)
         return FileResponse(game_path, media_type=mime or "application/octet-stream")
 
+    # 3. Fall back to upstream GitHub Assets repository redirect
+    if file_path.startswith(("item/", "character/", "collection/", "nametag/", "frame/")):
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(
+            url=f"https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/{file_path}",
+            status_code=307
+        )
+
     return Response(status_code=404)
 
 
