@@ -224,6 +224,10 @@ def seed_database(db: Session):
             existing_w.display_order = num
     db.commit()
 
+    # Safely purge obsolete sample wallets that were replaced by the 55 official regular wallets
+    db.query(CatalogueItem).filter(CatalogueItem.id.in_(["m42_wallets_7b727ed7", "wallet_crimson_crest", "wallet_syndicate_black"])).delete(synchronize_session=False)
+    db.commit()
+
     # 4. Ensure official CP wallets exist and are up to date
     CP_WALLETS = [
         (1, "Collection Point Level 0 Wallet", "01-collection-point-level-0-wallet", "0–499 CP"),
