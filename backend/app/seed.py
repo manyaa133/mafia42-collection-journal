@@ -1,7 +1,7 @@
 import os
 import json
 from sqlalchemy.orm import Session
-from backend.app.models import User, UserProfile, CatalogueItem, AuditLog
+from backend.app.models import User, UserProfile, CatalogueItem, AuditLog, UserCollectionItem
 from backend.app.auth import get_password_hash
 from backend.app.config import settings
 
@@ -46,10 +46,9 @@ def seed_database(db: Session):
     else:
         print(f"Owner account already exists: {existing_owner.username}")
 
-    # 2. Seed Catalogue Items if table is empty
-    item_count = db.query(CatalogueItem).count()
-    if item_count == 0 and os.path.exists(SEED_CATALOGUE_PATH):
-        print(f"Seeding catalogue items from {SEED_CATALOGUE_PATH}...")
+    # 2. Reconcile and synchronize all Canonical Catalogue Items from seed_catalogue.json
+    if os.path.exists(SEED_CATALOGUE_PATH):
+        print(f"Synchronizing and reconciling catalogue items from {SEED_CATALOGUE_PATH}...")
         with open(SEED_CATALOGUE_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
 
@@ -61,76 +60,64 @@ def seed_database(db: Session):
             "frames": "frames",
             "nameplates": "nameplates",
             "wallets": "wallets",
+            "cp_wallets": "cp_wallets",
         }
 
         for cat_key, cat_name in categories_map.items():
             items_list = data.get(cat_key, [])
             for item in items_list:
                 order_counter += 1
-                c_item = CatalogueItem(
-                    id=item.get("id"),
-                    category=cat_name,
-                    name=item.get("name", ""),
-                    character=item.get("character", ""),
-                    card_id=item.get("cardId") or item.get("card_id", ""),
-                    rarity=item.get("rarity", ""),
-                    level=item.get("level", 1),
-                    cp=item.get("cp", 0),
-                    description=item.get("description", ""),
-                    condition=item.get("condition", ""),
-                    how_to=item.get("howTo", ""),
-                    extra=item.get("extra", ""),
-                    image=item.get("image", ""),
-                    logo_image=item.get("logoImage", ""),
-                    wallet_images=item.get("walletImages", []),
-                    display_order=order_counter,
-                )
-                db.add(c_item)
+                item_id = item.get("id")
+                c_item = db.query(CatalogueItem).filter(CatalogueItem.id == item_id).first()
+                if not c_item:
+                    c_item = CatalogueItem(
+                        id=item_id,
+                        category=cat_name,
+                        name=item.get("name", ""),
+                        character=item.get("character", ""),
+                        card_id=item.get("cardId") or item.get("card_id", ""),
+                        rarity=item.get("rarity", ""),
+                        level=item.get("level", 1),
+                        cp=item.get("cp", 0),
+                        description=item.get("description", ""),
+                        condition=item.get("condition", ""),
+                        how_to=item.get("howTo") or item.get("how_to", ""),
+                        extra=item.get("extra", ""),
+                        image=item.get("image", ""),
+                        logo_image=item.get("logoImage") or item.get("logo_image", ""),
+                        wallet_images=item.get("walletImages") or item.get("wallet_images", []),
+                        display_order=item.get("display_order", order_counter),
+                    )
+                    db.add(c_item)
+                else:
+                    c_item.category = cat_name
+                    c_item.name = item.get("name", c_item.name)
+                    c_item.character = item.get("character", "")
+                    c_item.card_id = item.get("cardId") or item.get("card_id", "")
+                    c_item.rarity = item.get("rarity", "")
+                    c_item.level = item.get("level", 1)
+                    c_item.cp = item.get("cp", 0)
+                    c_item.description = item.get("description", "")
+                    c_item.condition = item.get("condition", "")
+                    c_item.how_to = item.get("howTo") or item.get("how_to", "")
+                    c_item.extra = item.get("extra", "")
+                    c_item.image = item.get("image", "")
+                    c_item.logo_image = item.get("logoImage") or item.get("logo_image", "")
+                    c_item.wallet_images = item.get("walletImages") or item.get("wallet_images", [])
+                    c_item.display_order = item.get("display_order", order_counter)
 
-        # Ensure sample wallets exist if catalogue has 0 wallets
-        wallet_items = data.get("wallets", [])
-        if len(wallet_items) == 0:
-            sample_wallets = [
-                {
-                    "id": "wallet_syndicate_black",
-                    "category": "wallets",
-                    "name": "Syndicate Black Leather Wallet",
-                    "description": "An exclusive black leather wallet stamped with the Mafia gold seal.",
-                    "cp": 500,
-                    "image": "/assets/cards/card_logo_m42-card-cop.jpg",
-                    "logo_image": "/assets/cards/card_logo_m42-card-cop.jpg",
-                    "wallet_images": [
-                        "/assets/cards/card_m42-card-cop.jpg",
-                        "/assets/skins/skin_logo_2ydoa5w8.jpg",
-                        "/assets/frames/frame_8bn335dz.jpg"
-                    ],
-                    "display_order": order_counter + 1
-                },
-                {
-                    "id": "wallet_crimson_crest",
-                    "category": "wallets",
-                    "name": "Crimson Crest Velvet Wallet",
-                    "description": "Crafted from crimson velvet with embroidered silver accents.",
-                    "cp": 750,
-                    "image": "/assets/cards/card_logo_m42-card-mafia.jpg",
-                    "logo_image": "/assets/cards/card_logo_m42-card-mafia.jpg",
-                    "wallet_images": [
-                        "/assets/cards/card_m42-card-mafia.jpg",
-                        "/assets/skins/skin_logo_j5mk8zxe.jpg",
-                        "/assets/frames/frame_m42-frame-001.jpg"
-                    ],
-                    "display_order": order_counter + 2
-                }
-            ]
-            for sw in sample_wallets:
-                # Only use valid assets if exist, else fallback gracefully
-                db.add(CatalogueItem(**sw))
+        # Safely purge extra non-canonical nameplates (e.g. 43 extra items in live database)
+        canonical_np_ids = {item["id"] for item in data.get("nameplates", [])}
+        extra_nps = db.query(CatalogueItem).filter(CatalogueItem.category == "nameplates", ~CatalogueItem.id.in_(canonical_np_ids)).all()
+        if extra_nps:
+            extra_np_ids = [np.id for np in extra_nps]
+            print(f"Purging {len(extra_np_ids)} non-canonical nameplates from database: {extra_np_ids}")
+            db.query(UserCollectionItem).filter(UserCollectionItem.item_id.in_(extra_np_ids)).delete(synchronize_session=False)
+            db.query(CatalogueItem).filter(CatalogueItem.id.in_(extra_np_ids)).delete(synchronize_session=False)
 
         db.commit()
-        total_seeded = db.query(CatalogueItem).count()
-        print(f"Successfully seeded {total_seeded} catalogue items into database.")
-    else:
-        print(f"Catalogue items already seeded ({item_count} items present).")
+        total_synced = db.query(CatalogueItem).count()
+        print(f"Catalogue items synchronized successfully ({total_synced} items present).")
 
     # 3. Ensure all 55 official regular wallets exist and are up to date
     REGULAR_WALLETS = [
