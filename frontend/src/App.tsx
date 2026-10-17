@@ -220,6 +220,8 @@ export default function App() {
       }
       setAuthModalOpen(false);
       setAuthForm({ username: "", email: "", password: "" });
+      const catData = await api.getCatalogue();
+      setCatalogue(catData);
       await loadUserData();
     } catch (err: any) {
       setAuthError(err.message || "Authentication failed");
@@ -231,6 +233,10 @@ export default function App() {
     setCurrentUser(null);
     setCollection({ user_id: "", owned_item_ids: [], items: {} });
     setStats(null);
+    try {
+      const catData = await api.getCatalogue();
+      setCatalogue(catData);
+    } catch {}
     if (activeNav === "admin" || activeNav === "profile") {
       setActiveNav("home");
     }

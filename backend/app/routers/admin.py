@@ -36,7 +36,7 @@ def create_catalogue_item(
 
     new_item = CatalogueItem(
         id=item_id,
-        category=req.category.lower(),
+        category=req.category.lower().strip(),
         name=req.name,
         character=req.character or "",
         card_id=req.card_id or "",
@@ -79,6 +79,8 @@ def update_catalogue_item(
 
     update_data = req.model_dump(exclude_unset=True)
     for field, value in update_data.items():
+        if field == "category" and isinstance(value, str):
+            value = value.lower().strip()
         setattr(item, field, value)
 
     audit = AuditLog(

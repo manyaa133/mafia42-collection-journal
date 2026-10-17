@@ -34,7 +34,7 @@ def get_all_catalogue_items(
     }
 
     for item in items:
-        cat = item.category.lower()
+        cat = (item.category or "").lower().strip()
         if cat in grouped:
             grouped[cat].append(CatalogueItemResponse.model_validate(item))
         else:
