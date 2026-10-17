@@ -30,19 +30,47 @@ def get_cp_wallet_id_for_cp(user_cp: int) -> str:
     else:
         return "cp_wallet_01"
 
+GEM_LEVEL_CP_MAP = {
+    0: (0, 0),
+    1: (75, 0),
+    2: (91, 0),
+    3: (111, 0),
+    4: (139, 0),
+    5: (175, 0),
+    6: (219, 0),
+    7: (271, 0),
+    8: (331, 0),
+    9: (399, 0),
+    10: (475, 0),
+    11: (559, 0),
+    12: (651, 0),
+    13: (751, 0),
+    14: (859, 0),
+    15: (975, 1),
+    16: (1099, 2),
+}
+
 def calculate_user_cp(user_id: int, db: Session) -> int:
     """Calculate the total CP earned by the user across all eligible categories."""
+    # Standard owned items (skins, frames, nameplates, wallets)
+    standard_categories = {"skins", "frames", "nameplates", "wallets"}
     owned_items = (
         db.query(CatalogueItem.cp)
         .join(UserCollectionItem, UserCollectionItem.item_id == CatalogueItem.id)
         .filter(
             UserCollectionItem.user_id == user_id,
             UserCollectionItem.owned == True,
-            CatalogueItem.category.in_(CP_CATEGORIES)
+            CatalogueItem.category.in_(standard_categories)
         )
         .all()
     )
-    return sum(int(item[0] or 0) for item in owned_items)
+    standard_cp = sum(int(item[0] or 0) for item in owned_items)
+
+    # Gems CP: calculated from user's selected level in user_gems
+    user_gems = db.query(UserGem).filter(UserGem.user_id == user_id).all()
+    gem_cp = sum(GEM_LEVEL_CP_MAP.get(ug.current_level, (0, 0))[0] for ug in user_gems)
+
+    return standard_cp + gem_cp
 
 def sync_user_cp_wallet(user_id: int, db: Session) -> str:
     """Ensure exactly one CP wallet matching the user's active CP bracket is owned."""
@@ -231,8 +259,12 @@ def get_collection_cp_stats(
         ).all()
     )
 
-    # Categories contributing to CP: skins, gems, frames, nameplates, wallets
-    cp_categories = {"skins", "gems", "frames", "nameplates", "wallets"}
+    # Fetch user's gem selections
+    user_gems = db.query(UserGem).filter(UserGem.user_id == current_user.id).all()
+    user_gem_levels = {ug.item_id: ug.current_level for ug in user_gems}
+
+    # Categories contributing to CP: skins, frames, nameplates, wallets
+    standard_cp_categories = {"skins", "frames", "nameplates", "wallets"}
 
     category_breakdown = {
         "skins": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
@@ -257,25 +289,41 @@ def get_collection_cp_stats(
         if cat not in category_breakdown:
             category_breakdown[cat] = {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0}
 
-        is_owned = item.id in user_owned_ids
-        item_cp = int(item.cp or 0)
-
         category_breakdown[cat]["total"] += 1
-        if is_owned:
-            category_breakdown[cat]["owned"] += 1
 
-        if cat in cp_categories:
-            category_breakdown[cat]["max_cp"] += item_cp
-            total_cp += item_cp
-            if is_owned:
-                category_breakdown[cat]["user_cp"] += item_cp
-                user_cp += item_cp
+        if cat == "gems":
+            # For gems, each gem max CP is 1099 (Level 16)
+            gem_max_cp = 1099
+            category_breakdown[cat]["max_cp"] += gem_max_cp
+            total_cp += gem_max_cp
 
-        # Cards are excluded from total_items count in original Mafia42 journal
-        if cat != "cards":
-            total_items += 1
-            if is_owned:
+            current_lvl = user_gem_levels.get(item.id, 0)
+            if current_lvl > 0:
+                gem_user_cp = GEM_LEVEL_CP_MAP.get(current_lvl, (0, 0))[0]
+                category_breakdown[cat]["owned"] += 1
+                category_breakdown[cat]["user_cp"] += gem_user_cp
+                user_cp += gem_user_cp
                 owned_items += 1
+            total_items += 1
+        else:
+            is_owned = item.id in user_owned_ids
+            item_cp = int(item.cp or 0)
+
+            if is_owned:
+                category_breakdown[cat]["owned"] += 1
+
+            if cat in standard_cp_categories:
+                category_breakdown[cat]["max_cp"] += item_cp
+                total_cp += item_cp
+                if is_owned:
+                    category_breakdown[cat]["user_cp"] += item_cp
+                    user_cp += item_cp
+
+            # Cards are excluded from total_items count in original Mafia42 journal
+            if cat != "cards":
+                total_items += 1
+                if is_owned:
+                    owned_items += 1
 
     completion_percentage = (user_cp / total_cp * 100) if total_cp > 0 else 0.0
 

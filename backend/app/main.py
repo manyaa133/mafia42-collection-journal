@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, Response
 from backend.app.config import settings
 from backend.app.database import engine, Base, SessionLocal
 from backend.app.seed import seed_database
-from backend.app.routers import auth, catalogue, collection, user, admin
+from backend.app.routers import auth, catalogue, collection, user, admin, gems
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -45,6 +45,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api")
 app.include_router(catalogue.router, prefix="/api")
 app.include_router(collection.router, prefix="/api")
+app.include_router(gems.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 

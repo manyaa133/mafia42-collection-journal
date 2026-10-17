@@ -391,5 +391,86 @@ export const api = {
     if (!res.ok) return null;
     return res.json();
   },
+
+  // Gems API
+  async getGems(): Promise<GemsResponse> {
+    const res = await fetch(`${BASE_URL}/gems`, { headers: getAuthHeader() });
+    if (!res.ok) throw new Error("Failed to load gems");
+    return res.json();
+  },
+
+  async selectGemLevel(gemId: string, currentLevel: number): Promise<{ message: string; gem_id: string; current_level: number; cp: number; gem_points: number }> {
+    const res = await fetch(`${BASE_URL}/gems/${gemId}/select-level`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeader() },
+      body: JSON.stringify({ current_level: currentLevel }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to update gem level");
+    }
+    return res.json();
+  },
+
+  async linkGemCard(gemId: string, cardId: string): Promise<{ message: string; gem_id: string; card_id: string; card_name: string }> {
+    const res = await fetch(`${BASE_URL}/gems/admin/${gemId}/link-card`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...getAuthHeader() },
+      body: JSON.stringify({ card_id: cardId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to link card to gem");
+    }
+    return res.json();
+  },
 };
+
+export interface GemLevelItem {
+  level: number;
+  name: string;
+  description: string;
+  cp: number;
+  gem_points: number;
+  image: string;
+}
+
+export interface GemItem {
+  id: string;
+  category: "gems";
+  team: "Mafia Team" | "Citizen Team" | "Cult Mode" | string;
+  role_id: string;
+  name: string;
+  character: string;
+  card_id: string;
+  card_name: string;
+  linked_card?: {
+    id: string;
+    name: string;
+    character: string;
+    image: string;
+  } | null;
+  image: string;
+  badge_image: string;
+  display_order: number;
+  current_level: number;
+  current_cp: number;
+  current_gem_points: number;
+  current_level_data?: GemLevelItem | null;
+  levels: GemLevelItem[];
+}
+
+export interface GemsResponse {
+  user_id: string;
+  total_gem_cp: number;
+  total_gem_points: number;
+  teams: {
+    "Mafia Team": GemItem[];
+    "Citizen Team": GemItem[];
+    "Cult Mode": GemItem[];
+    [key: string]: GemItem[];
+  };
+  all_gems: GemItem[];
+}
+
 

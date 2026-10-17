@@ -142,37 +142,48 @@ body {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 9px 12px;
+  padding: 10px 14px;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 8px;
-  color: var(--text-2);
+  color: var(--cream);
   font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
   text-align: left;
   transition: all 0.15s ease;
+  outline: none;
 }
 
 .m42-nav-item:hover {
-  background: rgba(134, 185, 177, 0.08);
-  color: var(--cream);
+  background: rgba(134, 185, 177, 0.12);
+  border-color: rgba(134, 185, 177, 0.25);
+  color: #ffffff;
+  transform: translateX(2px);
+}
+
+.m42-nav-item:focus-visible {
+  outline: 2px solid var(--peach);
+  outline-offset: -2px;
 }
 
 .m42-nav-item.active {
-  background: rgba(134, 185, 177, 0.16);
-  color: var(--peach);
-  font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--peach);
+  background: rgba(134, 185, 177, 0.22);
+  border-color: rgba(134, 185, 177, 0.4);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--peach), 0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
 .m42-nav-badge {
   margin-left: auto;
   font-size: 11px;
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 10px;
-  background: rgba(134, 185, 177, 0.12);
-  color: var(--peach);
+  background: rgba(134, 185, 177, 0.2);
+  border: 1px solid rgba(134, 185, 177, 0.35);
+  color: #ffffff;
+  font-weight: 700;
 }
 
 /* Header & Main */
@@ -290,50 +301,80 @@ body {
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
-  border: 1px solid var(--line);
-  background: var(--surf-1);
-  color: var(--text-1);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(134, 185, 177, 0.28);
+  background: rgba(8, 35, 45, 0.9);
+  color: var(--cream);
+  outline: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
 .m42-btn:hover {
-  background: var(--surf-2);
+  background: var(--surf-3);
   border-color: var(--peach);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+.m42-btn:focus-visible {
+  outline: 2px solid var(--peach);
+  outline-offset: 2px;
+}
+
+.m42-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .m42-btn-primary {
-  background: var(--rose-deep);
-  border-color: var(--peach);
+  background: linear-gradient(135deg, #2A5A60 0%, #3B7275 50%, #4B8587 100%);
+  border: 1.5px solid var(--peach);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.m42-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #3B7275 0%, #4E9598 100%);
+  border-color: #cffafe;
+  color: #ffffff;
+  box-shadow: 0 4px 18px var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+.m42-btn-ghost {
+  background: rgba(134, 185, 177, 0.12);
+  border: 1px solid rgba(134, 185, 177, 0.3);
   color: var(--cream);
   font-weight: 600;
 }
 
-.m42-btn-primary:hover {
-  background: var(--rose);
-  box-shadow: 0 4px 14px var(--accent-glow);
-}
-
-.m42-btn-ghost {
-  background: transparent;
-  border-color: transparent;
-  color: var(--text-2);
-}
-
-.m42-btn-ghost:hover {
-  background: rgba(134, 185, 177, 0.08);
-  color: var(--cream);
+.m42-btn-ghost:hover:not(:disabled) {
+  background: rgba(134, 185, 177, 0.24);
+  border-color: var(--peach);
+  color: #ffffff;
+  box-shadow: 0 0 12px var(--accent-glow);
+  transform: translateY(-1px);
 }
 
 .m42-btn-danger {
-  background: rgba(180, 50, 50, 0.2);
-  border-color: rgba(220, 80, 80, 0.4);
-  color: #ff9999;
+  background: rgba(225, 29, 72, 0.2);
+  border: 1.5px solid rgba(244, 63, 94, 0.6);
+  color: #fecdd3;
+  font-weight: 700;
 }
 
-.m42-btn-danger:hover {
-  background: rgba(180, 50, 50, 0.4);
+.m42-btn-danger:hover:not(:disabled) {
+  background: rgba(225, 29, 72, 0.45);
+  border-color: #f43f5e;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(244, 63, 94, 0.5);
+  transform: translateY(-1px);
 }
 
 /* Cards & Containers */
@@ -487,9 +528,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   margin-top: 8px;
   width: 100%;
+  flex-wrap: wrap;
+}
+
+.m42-logo-actions .m42-btn-ghost {
+  background: rgba(6, 26, 35, 0.95);
+  border: 1px solid rgba(134, 185, 177, 0.35);
+  color: var(--cream);
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.m42-logo-actions .m42-btn-ghost:hover {
+  background: rgba(14, 45, 58, 1);
+  border-color: var(--peach);
+  color: #ffffff;
+  box-shadow: 0 0 10px var(--accent-glow);
 }
 
 /* Image Tile (Icons, Frames, Nameplates) */
@@ -558,17 +615,20 @@ body {
   cursor: pointer;
   user-select: none;
   font-size: 11.5px;
-  color: var(--text-2);
-  background: rgba(134, 185, 177, 0.08);
-  border: 1px solid var(--line);
-  padding: 4px 8px;
+  color: var(--cream);
+  background: rgba(6, 26, 35, 0.9);
+  border: 1px solid rgba(134, 185, 177, 0.32);
+  padding: 5px 10px;
   border-radius: 6px;
   transition: all 0.15s ease;
+  font-weight: 500;
 }
 
 .m42-owned-toggle:hover {
-  background: rgba(134, 185, 177, 0.15);
+  background: rgba(14, 45, 58, 0.95);
   border-color: var(--peach);
+  color: #ffffff;
+  box-shadow: 0 0 10px var(--accent-glow);
 }
 
 .m42-owned-toggle input {
@@ -577,10 +637,11 @@ body {
 }
 
 .m42-owned-toggle.checked {
-  background: rgba(134, 185, 177, 0.22);
+  background: rgba(134, 185, 177, 0.28);
   border-color: var(--peach);
-  color: var(--cream);
-  font-weight: 600;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 0 12px var(--accent-glow);
 }
 
 .m42-entry-status-badge {
@@ -859,3 +920,663 @@ body {
   text-decoration: underline;
 }
 
+
+/* ==========================================================================
+   GEMS SECTION STYLES
+   ========================================================================== */
+.m42-gems-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.m42-gems-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surf-1);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.m42-gems-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.m42-gems-badge-icon {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, var(--surf-3), var(--rose-deep));
+  border: 1px solid var(--peach);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--peach);
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.m42-gems-stats-panel {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.m42-gems-stat-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: rgba(4, 20, 32, 0.7);
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+}
+
+.m42-gems-stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-3);
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.m42-gems-stat-value {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--cream);
+}
+
+.m42-gems-stat-value.highlight-cyan {
+  color: var(--peach);
+  text-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* Team Navigation Tabs */
+.m42-gems-team-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(6, 26, 35, 0.95);
+  border: 1.5px solid rgba(134, 185, 177, 0.25);
+  border-radius: 14px;
+  padding: 12px 18px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.m42-gems-team-nav-label {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cream);
+  margin-right: 6px;
+  display: flex;
+  align-items: center;
+  opacity: 0.9;
+}
+
+.m42-gems-team-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.m42-gems-team-btn-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.m42-gems-team-btn:hover .m42-gems-team-btn-icon {
+  transform: scale(1.15);
+}
+
+/* Mafia Team Button Styles */
+.m42-gems-team-btn.mafia-btn {
+  background: rgba(30, 10, 18, 0.85);
+  border: 2px solid #ef4444;
+  color: #fecdd3;
+}
+
+.m42-gems-team-btn.mafia-btn .m42-gems-team-btn-icon {
+  color: #f43f5e;
+}
+
+.m42-gems-team-btn.mafia-btn .m42-gems-team-count {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ffe4e6;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.m42-gems-team-btn.mafia-btn:hover {
+  background: rgba(76, 12, 28, 0.95);
+  border-color: #f43f5e;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45);
+}
+
+.m42-gems-team-btn.mafia-btn.active {
+  background: linear-gradient(135deg, #be123c 0%, #e11d48 50%, #f43f5e 100%);
+  border-color: #ffb3c1;
+  color: #ffffff;
+  box-shadow: 0 0 24px rgba(244, 63, 94, 0.7), 0 4px 12px rgba(0, 0, 0, 0.5);
+  transform: translateY(-1px);
+}
+
+.m42-gems-team-btn.mafia-btn.active .m42-gems-team-btn-icon {
+  color: #ffffff;
+}
+
+.m42-gems-team-btn.mafia-btn.active .m42-gems-team-count {
+  background: rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Citizen Team Button Styles */
+.m42-gems-team-btn.citizen-btn {
+  background: rgba(6, 30, 44, 0.85);
+  border: 2px solid #06b6d4;
+  color: #cffafe;
+}
+
+.m42-gems-team-btn.citizen-btn .m42-gems-team-btn-icon {
+  color: #22d3ee;
+}
+
+.m42-gems-team-btn.citizen-btn .m42-gems-team-count {
+  background: rgba(6, 182, 212, 0.25);
+  color: #ecfeff;
+  border: 1px solid rgba(6, 182, 212, 0.5);
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.m42-gems-team-btn.citizen-btn:hover {
+  background: rgba(8, 48, 68, 0.95);
+  border-color: #22d3ee;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(6, 182, 212, 0.45);
+}
+
+.m42-gems-team-btn.citizen-btn.active {
+  background: linear-gradient(135deg, #0e7490 0%, #0891b2 50%, #06b6d4 100%);
+  border-color: #a5f3fc;
+  color: #ffffff;
+  box-shadow: 0 0 24px rgba(6, 182, 212, 0.7), 0 4px 12px rgba(0, 0, 0, 0.5);
+  transform: translateY(-1px);
+}
+
+.m42-gems-team-btn.citizen-btn.active .m42-gems-team-btn-icon {
+  color: #ffffff;
+}
+
+.m42-gems-team-btn.citizen-btn.active .m42-gems-team-count {
+  background: rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Cult Mode Button Styles */
+.m42-gems-team-btn.cult-btn {
+  background: rgba(35, 14, 52, 0.85);
+  border: 2px solid #a855f7;
+  color: #f3e8ff;
+}
+
+.m42-gems-team-btn.cult-btn .m42-gems-team-btn-icon {
+  color: #c084fc;
+}
+
+.m42-gems-team-btn.cult-btn .m42-gems-team-count {
+  background: rgba(168, 85, 247, 0.25);
+  color: #f3e8ff;
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.m42-gems-team-btn.cult-btn:hover {
+  background: rgba(58, 20, 86, 0.95);
+  border-color: #c084fc;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.45);
+}
+
+.m42-gems-team-btn.cult-btn.active {
+  background: linear-gradient(135deg, #7e22ce 0%, #9333ea 50%, #a855f7 100%);
+  border-color: #e9d5ff;
+  color: #ffffff;
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.7), 0 4px 12px rgba(0, 0, 0, 0.5);
+  transform: translateY(-1px);
+}
+
+.m42-gems-team-btn.cult-btn.active .m42-gems-team-btn-icon {
+  color: #ffffff;
+}
+
+.m42-gems-team-btn.cult-btn.active .m42-gems-team-count {
+  background: rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Role Filter Bar */
+.m42-gems-role-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 6px 2px 12px;
+}
+
+.m42-gems-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(6, 26, 35, 0.9);
+  border: 1px solid rgba(134, 185, 177, 0.32);
+  padding: 7px 15px;
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--cream);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.m42-gems-role-pill:hover {
+  background: rgba(14, 45, 58, 0.95);
+  border-color: var(--peach);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.m42-gems-role-pill:focus-visible {
+  outline: 2px solid var(--peach);
+  outline-offset: 2px;
+}
+
+.m42-gems-role-pill.active {
+  background: var(--peach);
+  color: #041420;
+  font-weight: 700;
+  border-color: var(--peach);
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+
+/* Gem Collection Item Card */
+.m42-gem-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+
+.m42-gem-card:hover {
+  border-color: rgba(134, 185, 177, 0.4);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+
+.m42-gem-card.has-selection {
+  border-color: var(--peach);
+}
+
+.m42-gem-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+}
+
+.m42-gem-header-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.m42-gem-role-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: contain;
+  background: rgba(4, 20, 32, 0.8);
+  border: 1px solid var(--line);
+  padding: 2px;
+}
+
+.m42-gem-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--cream);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.m42-gem-team-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(75, 114, 115, 0.25);
+  color: var(--peach);
+  border: 1px solid rgba(134, 185, 177, 0.3);
+}
+
+.m42-gem-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Card Linking Box */
+.m42-gem-card-link-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(4, 20, 32, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+
+.m42-gem-card-thumb {
+  width: 24px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid var(--peach);
+}
+
+.m42-gem-card-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cream);
+}
+
+/* Selected Gem Display Box (Word document / Screenshot format) */
+.m42-gem-display-preview {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: rgba(4, 20, 32, 0.55);
+  border: 1px solid rgba(134, 185, 177, 0.2);
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+
+.m42-gem-current-img-wrap {
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  background: radial-gradient(circle, rgba(134, 185, 177, 0.15) 0%, rgba(4, 20, 32, 0.9) 80%);
+  border: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.m42-gem-current-img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+}
+
+.m42-gem-empty-icon {
+  color: var(--text-3);
+  font-size: 11px;
+  font-style: italic;
+  text-align: center;
+}
+
+.m42-gem-preview-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.m42-gem-preview-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cream);
+}
+
+.m42-gem-preview-desc {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.45;
+}
+
+.m42-gem-preview-badges {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.m42-gem-cp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(134, 185, 177, 0.18);
+  color: var(--peach);
+  border: 1px solid var(--peach);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.m42-gem-point-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 215, 0, 0.15);
+  color: #ffd700;
+  border: 1px solid #ffd700;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* 16 Levels Grid Selector */
+.m42-gem-level-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.m42-gem-level-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.m42-gem-selector-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.m42-gem-no-gem-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(45, 12, 18, 0.85);
+  border: 1.5px solid #ef4444;
+  color: #fecdd3;
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.m42-gem-no-gem-btn:hover {
+  background: rgba(76, 12, 28, 0.95);
+  border-color: #f43f5e;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.45);
+}
+
+.m42-gem-no-gem-btn:focus-visible {
+  outline: 2px solid #ef4444;
+  outline-offset: 2px;
+}
+
+.m42-gem-no-gem-btn.active {
+  background: linear-gradient(135deg, #be123c 0%, #e11d48 100%);
+  border-color: #ffb3c1;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.6);
+}
+
+.m42-gem-levels-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .m42-gem-levels-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 500px) {
+  .m42-gem-levels-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.m42-gem-level-box {
+  background: rgba(6, 26, 35, 0.9);
+  border: 1.5px solid rgba(134, 185, 177, 0.28);
+  border-radius: 8px;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  outline: none;
+}
+
+.m42-gem-level-box:hover {
+  background: rgba(14, 45, 58, 0.95);
+  border-color: var(--peach);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.m42-gem-level-box:focus-visible {
+  outline: 2px solid var(--peach);
+  outline-offset: 2px;
+}
+
+.m42-gem-level-box.selected {
+  background: linear-gradient(135deg, rgba(8, 35, 45, 0.95), rgba(18, 58, 67, 0.95));
+  border: 2px solid var(--peach);
+  box-shadow: 0 0 16px var(--accent-glow);
+  transform: translateY(-2px);
+}
+
+.m42-gem-level-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+}
+
+.m42-gem-level-box.selected .m42-gem-level-num {
+  color: var(--peach);
+}
+
+.m42-gem-level-img-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(2, 13, 22, 0.5);
+}
+
+.m42-gem-level-img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+}
+
+.m42-gem-level-cp {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.m42-gem-level-box.selected .m42-gem-level-cp {
+  color: var(--peach);
+  font-weight: 700;
+}
+
+.m42-gem-point-pip {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #ffd700;
+  color: #041420;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 4px;
+  line-height: 1;
+}

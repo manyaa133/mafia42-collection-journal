@@ -6,9 +6,9 @@ import {
   ChevronDown, Plus, X, Star, Check, Menu, TrendingUp, TrendingDown,
   Pin, Calendar, Filter, ArrowLeft, ArrowRight, ArrowUp, ArrowDown,
   Pencil, Trash2, Eye, Download, Upload, Shield, Lock, LogIn, LogOut,
-  CheckCircle, AlertCircle, RefreshCw, ExternalLink
+  CheckCircle, AlertCircle, RefreshCw, ExternalLink, Flame, Users
 } from 'lucide-react';
-import { api, User, CatalogueItem, CPStats, UserCollectionData, Goal, Note, AuditLog, AdminUser } from './api';
+import { api, User, CatalogueItem, CPStats, UserCollectionData, Goal, Note, AuditLog, AdminUser, GemItem, GemsResponse, GemLevelItem } from './api';
 
 const CATEGORY_CONFIG: Record<string, { title: string; singular: string; subtitle: string; isLogo: boolean }> = {
   skins: { title: "Skins", singular: "Skin", subtitle: "Collectible skins with CP values, character assignments, and logos.", isLogo: true },
@@ -515,7 +515,17 @@ export default function App() {
             />
           )}
 
-          {Object.keys(CATEGORY_CONFIG).includes(activeNav) && (
+          {activeNav === "gems" && (
+            <GemsPage
+              searchQuery={searchQuery}
+              currentUser={currentUser}
+              cards={catalogue.cards || []}
+              onOpenAuth={() => setAuthModalOpen(true)}
+              onRefreshStats={loadUserData}
+            />
+          )}
+
+          {activeNav !== "gems" && Object.keys(CATEGORY_CONFIG).includes(activeNav) && (
             <CategoryItemsPage
               category={activeNav}
               items={catalogue[activeNav] || []}
@@ -1184,7 +1194,7 @@ function FocusedItemModal({
               ) : (
                 <button
                   type="button"
-                  className={`m42-btn ${isOwned ? "m42-btn-ghost" : "m42-btn-primary"}`}
+                  className={`m42-btn ${isOwned ? "m42-btn-danger" : "m42-btn-primary"}`}
                   onClick={onToggleOwned}
                   style={{ width: "100%", justifyContent: "center", padding: "10px 16px" }}
                 >
@@ -2124,4 +2134,560 @@ function AdminPage({ catalogue, users, auditLogs, activeTab, onTabChange, onAddI
     </div>
   );
 }
+
+// ============================================================================
+// GEMS COLLECTION PAGE COMPONENT
+// ============================================================================
+interface GemsPageProps {
+  searchQuery: string;
+  currentUser: User | null;
+  cards: CatalogueItem[];
+  onOpenAuth: () => void;
+  onRefreshStats: () => Promise<void>;
+}
+
+function GemsPage({
+  searchQuery,
+  currentUser,
+  cards,
+  onOpenAuth,
+  onRefreshStats,
+}: GemsPageProps) {
+  const [gemsData, setGemsData] = useState<GemsResponse | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<"Mafia Team" | "Citizen Team" | "Cult Mode">("Mafia Team");
+  const [selectedRoleId, setSelectedRoleId] = useState<string>("all");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [linkModalGem, setLinkModalGem] = useState<GemItem | null>(null);
+  const [selectedCardIdForLink, setSelectedCardIdForLink] = useState<string>("");
+  const [savingLink, setSavingLink] = useState<boolean>(false);
+
+  useEffect(() => {
+    loadGems();
+  }, [currentUser]);
+
+  async function loadGems() {
+    setLoading(true);
+    try {
+      const data = await api.getGems();
+      setGemsData(data);
+    } catch (err) {
+      console.error("Failed to load gems:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Level Selection Handler (1–16 or 0 for No Gem)
+  async function handleSelectLevel(gem: GemItem, targetLevel: number) {
+    if (!currentUser) {
+      onOpenAuth();
+      return;
+    }
+
+    // If clicking already selected level, treat as re-selection or toggle to No Gem
+    const newLevel = gem.current_level === targetLevel ? 0 : targetLevel;
+
+    // Optimistic Update
+    if (gemsData) {
+      const updatedTeams = { ...gemsData.teams };
+      let deltaCp = 0;
+      let deltaPoints = 0;
+
+      const updateList = (list: GemItem[]) =>
+        list.map(g => {
+          if (g.id === gem.id) {
+            const oldCp = g.current_cp;
+            const oldGp = g.current_gem_points;
+            const newLvlData = newLevel > 0 ? g.levels[newLevel - 1] : null;
+            const newCp = newLvlData ? newLvlData.cp : 0;
+            const newGp = newLvlData ? newLvlData.gem_points : 0;
+
+            deltaCp = newCp - oldCp;
+            deltaPoints = newGp - oldGp;
+
+            return {
+              ...g,
+              current_level: newLevel,
+              current_cp: newCp,
+              current_gem_points: newGp,
+              current_level_data: newLvlData,
+            };
+          }
+          return g;
+        });
+
+      updatedTeams["Mafia Team"] = updateList(updatedTeams["Mafia Team"] || []);
+      updatedTeams["Citizen Team"] = updateList(updatedTeams["Citizen Team"] || []);
+      updatedTeams["Cult Mode"] = updateList(updatedTeams["Cult Mode"] || []);
+
+      setGemsData({
+        ...gemsData,
+        total_gem_cp: Math.max(0, gemsData.total_gem_cp + deltaCp),
+        total_gem_points: Math.max(0, gemsData.total_gem_points + deltaPoints),
+        teams: updatedTeams,
+        all_gems: [
+          ...(updatedTeams["Mafia Team"] || []),
+          ...(updatedTeams["Citizen Team"] || []),
+          ...(updatedTeams["Cult Mode"] || []),
+        ],
+      });
+    }
+
+    try {
+      await api.selectGemLevel(gem.id, newLevel);
+      await onRefreshStats();
+    } catch (err) {
+      console.error("Failed to persist gem level:", err);
+      loadGems();
+    }
+  }
+
+  // Owner Card Link Handler
+  async function handleSaveCardLink() {
+    if (!linkModalGem) return;
+    setSavingLink(true);
+    try {
+      await api.linkGemCard(linkModalGem.id, selectedCardIdForLink);
+      setLinkModalGem(null);
+      await loadGems();
+    } catch (err: any) {
+      alert("Error linking card: " + err.message);
+    } finally {
+      setSavingLink(false);
+    }
+  }
+
+  // Filter gems by Team, Role filter, and Search Query
+  const currentTeamGems = gemsData ? gemsData.teams[selectedTeam] || [] : [];
+  const filteredGems = useMemo(() => {
+    return currentTeamGems.filter(g => {
+      if (selectedRoleId !== "all" && g.role_id !== selectedRoleId) {
+        return false;
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchName = g.name.toLowerCase().includes(q);
+        const matchChar = g.character.toLowerCase().includes(q);
+        const matchLevels = g.levels.some(l => l.name.toLowerCase().includes(q));
+        if (!matchName && !matchChar && !matchLevels) return false;
+      }
+      return true;
+    });
+  }, [currentTeamGems, selectedRoleId, searchQuery]);
+
+  // Unique roles for the role filter pills
+  const availableRoles = useMemo(() => {
+    const seen = new Set<string>();
+    const roles: { role_id: string; name: string }[] = [];
+    currentTeamGems.forEach(g => {
+      if (!seen.has(g.role_id)) {
+        seen.add(g.role_id);
+        roles.push({ role_id: g.role_id, name: g.character });
+      }
+    });
+    return roles;
+  }, [currentTeamGems]);
+
+  if (loading && !gemsData) {
+    return (
+      <div style={{ textAlign: "center", padding: "80px 20px" }}>
+        <RefreshCw size={32} className="spin" color="var(--peach)" />
+        <div style={{ marginTop: 16, color: "var(--text-3)", fontSize: 14 }}>Loading Gems catalogue...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="m42-gems-container">
+      {/* Gems Header Banner */}
+      <div className="m42-gems-header">
+        <div className="m42-gems-header-left">
+          <div className="m42-gems-badge-icon">
+            <Coins size={28} />
+          </div>
+          <div>
+            <h1 className="m42-serif" style={{ fontSize: 28, color: "var(--cream)", marginBottom: 4 }}>
+              Gems Collection
+            </h1>
+            <p style={{ fontSize: 13, color: "var(--text-3)", margin: 0 }}>
+              Refine and track gems for Mafia and Citizen roles across all 16 levels.
+            </p>
+          </div>
+        </div>
+
+        <div className="m42-gems-stats-panel">
+          <div className="m42-gems-stat-chip">
+            <span className="m42-gems-stat-label">Gem CP Total</span>
+            <span className="m42-gems-stat-value highlight-cyan">
+              {fmtNum(gemsData?.total_gem_cp || 0)} CP
+            </span>
+          </div>
+          <div className="m42-gems-stat-chip">
+            <span className="m42-gems-stat-label">Gem Points</span>
+            <span className="m42-gems-stat-value" style={{ color: "#ffd700" }}>
+              ⭐ {gemsData?.total_gem_points || 0}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Team Navigation Tabs */}
+      <div className="m42-gems-team-nav">
+        <div className="m42-gems-team-nav-label">Select Team:</div>
+        <button
+          type="button"
+          className={`m42-gems-team-btn mafia-btn ${selectedTeam === "Mafia Team" ? "active" : ""}`}
+          onClick={() => {
+            setSelectedTeam("Mafia Team");
+            setSelectedRoleId("all");
+          }}
+        >
+          <Flame size={20} className="m42-gems-team-btn-icon" />
+          <span className="m42-gems-team-title">Mafia Team</span>
+          <span className="m42-gems-team-count">
+            {gemsData?.teams["Mafia Team"]?.length || 10} Roles
+          </span>
+        </button>
+
+        <button
+          type="button"
+          className={`m42-gems-team-btn citizen-btn ${selectedTeam === "Citizen Team" ? "active" : ""}`}
+          onClick={() => {
+            setSelectedTeam("Citizen Team");
+            setSelectedRoleId("all");
+          }}
+        >
+          <Shield size={20} className="m42-gems-team-btn-icon" />
+          <span className="m42-gems-team-title">Citizen Team</span>
+          <span className="m42-gems-team-count">
+            {gemsData?.teams["Citizen Team"]?.length || 27} Roles
+          </span>
+        </button>
+
+        <button
+          type="button"
+          className={`m42-gems-team-btn cult-btn ${selectedTeam === "Cult Mode" ? "active" : ""}`}
+          onClick={() => {
+            setSelectedTeam("Cult Mode");
+            setSelectedRoleId("all");
+          }}
+        >
+          <Sparkles size={20} className="m42-gems-team-btn-icon" />
+          <span className="m42-gems-team-title">Cult Mode</span>
+          <span className="m42-gems-team-count">
+            {gemsData?.teams["Cult Mode"]?.length || 1} Role
+          </span>
+        </button>
+      </div>
+
+      {/* Role Filter Pills */}
+      <div className="m42-gems-role-bar">
+        <button
+          type="button"
+          className={`m42-gems-role-pill ${selectedRoleId === "all" ? "active" : ""}`}
+          onClick={() => setSelectedRoleId("all")}
+        >
+          All Roles ({currentTeamGems.length})
+        </button>
+        {availableRoles.map(r => (
+          <button
+            key={r.role_id}
+            type="button"
+            className={`m42-gems-role-pill ${selectedRoleId === r.role_id ? "active" : ""}`}
+            onClick={() => setSelectedRoleId(r.role_id)}
+          >
+            {r.name}
+          </button>
+        ))}
+      </div>
+
+      {/* Gems Items Grid */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {filteredGems.length === 0 ? (
+          <div className="m42-card" style={{ textAlign: "center", padding: "40px" }}>
+            <p style={{ color: "var(--text-3)", fontSize: 14 }}>No gems found matching your search filter.</p>
+          </div>
+        ) : (
+          filteredGems.map(gem => (
+            <GemCard
+              key={gem.id}
+              gem={gem}
+              currentUser={currentUser}
+              onSelectLevel={lvl => handleSelectLevel(gem, lvl)}
+              onOpenLinkModal={() => {
+                setLinkModalGem(gem);
+                setSelectedCardIdForLink(gem.card_id || "");
+              }}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Owner-Only Card Linking Modal */}
+      {linkModalGem && (
+        <div className="m42-modal-backdrop" onClick={() => setLinkModalGem(null)}>
+          <div className="m42-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+            <div className="m42-modal-header">
+              <h2 className="m42-serif" style={{ fontSize: 20, color: "var(--cream)" }}>
+                Link Card to {linkModalGem.name}
+              </h2>
+              <button
+                type="button"
+                className="m42-btn m42-btn-ghost"
+                onClick={() => setLinkModalGem(null)}
+                style={{ padding: 4 }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ padding: "16px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
+              <p style={{ fontSize: 13, color: "var(--text-3)" }}>
+                Associate a character card from your catalogue with this gem item. The linked card will be shown in the gem's card area.
+              </p>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
+                  Select Linked Card:
+                </label>
+                <select
+                  className="m42-input"
+                  value={selectedCardIdForLink}
+                  onChange={e => setSelectedCardIdForLink(e.target.value)}
+                  style={{ width: "100%", padding: "10px 12px" }}
+                >
+                  <option value="">-- No Card Linked --</option>
+                  {cards.map(card => (
+                    <option key={card.id} value={card.id}>
+                      {card.name} ({card.character}) [ID: {card.id}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedCardIdForLink && (
+                <div style={{ display: "flex", alignItems: "center", gap: 12, background: "rgba(4, 20, 32, 0.7)", padding: 12, borderRadius: 8, border: "1px solid var(--line)" }}>
+                  {cards.find(c => c.id === selectedCardIdForLink)?.image && (
+                    <img
+                      src={cards.find(c => c.id === selectedCardIdForLink)?.image}
+                      alt="Card Preview"
+                      style={{ width: 44, height: 60, borderRadius: 4, objectFit: "cover", border: "1px solid var(--peach)" }}
+                    />
+                  )}
+                  <div>
+                    <div style={{ fontWeight: 600, color: "var(--cream)", fontSize: 13 }}>
+                      {cards.find(c => c.id === selectedCardIdForLink)?.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                      Card ID: {selectedCardIdForLink}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="m42-modal-footer">
+              <button
+                type="button"
+                className="m42-btn m42-btn-ghost"
+                onClick={() => setLinkModalGem(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="m42-btn m42-btn-primary"
+                onClick={handleSaveCardLink}
+                disabled={savingLink}
+              >
+                {savingLink ? "Saving..." : "Save Link"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// INDIVIDUAL GEM CARD COMPONENT
+// Follows Word Document Layout & Mafia42 Screenshots:
+// - Role & Gem header with linked card
+// - Current selection preview box (image, name, description, CP, Gem Points)
+// - 16 level selector grid with 'No Gem' reset button
+// - Owner-only edit/link controls
+// ============================================================================
+interface GemCardProps {
+  gem: GemItem;
+  currentUser: User | null;
+  onSelectLevel: (lvl: number) => void;
+  onOpenLinkModal: () => void;
+}
+
+function GemCard({ gem, currentUser, onSelectLevel, onOpenLinkModal }: GemCardProps) {
+  const currentLvl = gem.current_level;
+  const currentLvlData = gem.current_level_data;
+  const isOwner = currentUser?.role === "owner";
+
+  return (
+    <div className={`m42-gem-card ${currentLvl > 0 ? "has-selection" : ""}`}>
+      {/* Card Header: Role Info, Team Badge, Linked Card, Owner Controls */}
+      <div className="m42-gem-card-header">
+        <div className="m42-gem-header-info">
+          {gem.badge_image && (
+            <img
+              src={gem.badge_image}
+              alt={gem.character}
+              className="m42-gem-role-badge"
+              onError={e => { (e.target as HTMLElement).style.display = "none"; }}
+            />
+          )}
+          <div>
+            <div className="m42-gem-title">
+              <span>{gem.name}</span>
+              <span className="m42-gem-team-tag">{gem.team}</span>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+              Role: <strong style={{ color: "var(--cream)" }}>{gem.character}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="m42-gem-header-right">
+          {/* Linked Card Area */}
+          {gem.linked_card ? (
+            <div className="m42-gem-card-link-box" title={`Linked to card: ${gem.linked_card.name}`}>
+              {gem.linked_card.image && (
+                <img src={gem.linked_card.image} alt={gem.linked_card.name} className="m42-gem-card-thumb" />
+              )}
+              <span className="m42-gem-card-name">{gem.linked_card.name}</span>
+            </div>
+          ) : (
+            <div className="m42-gem-card-link-box" style={{ opacity: 0.6 }}>
+              <Layers size={14} color="var(--text-3)" />
+              <span style={{ fontSize: 11, color: "var(--text-3)" }}>No Card Linked</span>
+            </div>
+          )}
+
+          {/* Owner-Only Link / Edit Control */}
+          {isOwner && (
+            <button
+              type="button"
+              className="m42-btn m42-btn-ghost"
+              style={{ fontSize: 11, padding: "5px 10px" }}
+              title="Owner: Link or change associated Card"
+              onClick={onOpenLinkModal}
+            >
+              <Pencil size={12} /> Link Card
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Selected Gem Display Box (as shown in Word document & NamuWiki screenshots) */}
+      <div className="m42-gem-display-preview">
+        <div className="m42-gem-current-img-wrap">
+          {currentLvl > 0 && currentLvlData?.image ? (
+            <img
+              src={currentLvlData.image}
+              alt={currentLvlData.name}
+              className="m42-gem-current-img"
+            />
+          ) : (
+            <div className="m42-gem-empty-icon">
+              <div>No Gem</div>
+              <div style={{ fontSize: 9 }}>Selected</div>
+            </div>
+          )}
+        </div>
+
+        <div className="m42-gem-preview-details">
+          {currentLvl > 0 && currentLvlData ? (
+            <>
+              <div className="m42-gem-preview-title">
+                Level {currentLvlData.level}: {currentLvlData.name}
+              </div>
+              <div className="m42-gem-preview-desc">
+                {currentLvlData.description || "Increases job assignment probability and rewards."}
+              </div>
+              <div className="m42-gem-preview-badges">
+                <span className="m42-gem-cp-badge">
+                  +{fmtNum(currentLvlData.cp)} CP
+                </span>
+                {currentLvlData.gem_points > 0 && (
+                  <span className="m42-gem-point-badge">
+                    ⭐ +{currentLvlData.gem_points} Gem Point{currentLvlData.gem_points > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="m42-gem-preview-title" style={{ color: "var(--text-3)" }}>
+                No Gem Equipped
+              </div>
+              <div className="m42-gem-preview-desc" style={{ color: "var(--text-3)" }}>
+                Select a level below (1–16) to register this gem in your collection and earn Collection Points.
+              </div>
+              <div className="m42-gem-preview-badges">
+                <span style={{ fontSize: 11, color: "var(--text-3)" }}>0 CP contributed</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* 16 Levels Grid Selector */}
+      <div className="m42-gem-level-selector">
+        <div className="m42-gem-level-selector-header">
+          <span className="m42-gem-selector-label">Select Level (1 – 16):</span>
+          <button
+            type="button"
+            className={`m42-gem-no-gem-btn ${currentLvl === 0 ? "active" : ""}`}
+            onClick={() => onSelectLevel(0)}
+            title="Reset selection (0 CP)"
+          >
+            <X size={12} /> No Gem
+          </button>
+        </div>
+
+        <div className="m42-gem-levels-grid">
+          {gem.levels.map(lvl => {
+            const isSelected = currentLvl === lvl.level;
+            return (
+              <div
+                key={lvl.level}
+                className={`m42-gem-level-box ${isSelected ? "selected" : ""}`}
+                onClick={() => onSelectLevel(lvl.level)}
+                title={`Level ${lvl.level}: ${lvl.name} (+${lvl.cp} CP)`}
+              >
+                {lvl.gem_points > 0 && (
+                  <span className="m42-gem-point-pip" title={`+${lvl.gem_points} Gem Point`}>
+                    +{lvl.gem_points}
+                  </span>
+                )}
+                <span className="m42-gem-level-num">Lv {lvl.level}</span>
+                <div className="m42-gem-level-img-wrap">
+                  {lvl.image ? (
+                    <img
+                      src={lvl.image}
+                      alt={lvl.name}
+                      className="m42-gem-level-img"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span style={{ fontSize: 10, color: "var(--text-3)" }}>Lv{lvl.level}</span>
+                  )}
+                </div>
+                <span className="m42-gem-level-cp">{lvl.cp} CP</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 

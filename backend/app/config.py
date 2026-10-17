@@ -38,7 +38,9 @@ class Settings(BaseSettings):
             "http://127.0.0.1:3000",
             "http://localhost:8000",
             "http://127.0.0.1:8000",
-            "https://*.vercel.app",
+            "https://mafia42-collection-journal.vercel.app",
+            "https://mafia42-collection-journal.onrender.com",
+            "*",
         ]
 
 settings = Settings()

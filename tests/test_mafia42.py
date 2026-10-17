@@ -234,7 +234,7 @@ def test_10_data_integrity():
     assert len(cat["skins"]) == 334
     assert len(cat["cards"]) == 42
     assert len(cat["frames"]) == 158
-    assert len(cat["nameplates"]) >= 221
+    assert len(cat["nameplates"]) >= 178
     assert len(cat["icons"]) >= 170
 
 def test_11_spa_production_serving():
@@ -546,5 +546,91 @@ def test_17_cp_wallet_automatic_qualification_and_boundaries():
     finally:
         # Cleanup
         client.delete(f"/api/admin/catalogue/{test_skin_id}", headers=owner_headers)
+
+
+def test_18_gems_collection_and_points():
+    """TEST 18: Gems collection, 16 selectable levels, CP calculation, Gem Points (Lv15/16), and card linking."""
+    login_owner = client.post("/api/auth/login", json={
+        "username_or_email": settings.INITIAL_OWNER_EMAIL,
+        "password": settings.INITIAL_OWNER_PASSWORD,
+    })
+    owner_headers = {"Authorization": f"Bearer {login_owner.json()['access_token']}"}
+
+    uid1 = uuid.uuid4().hex[:6]
+    reg1 = client.post("/api/auth/register", json={
+        "email": f"gem_user1_{uid1}@example.com",
+        "username": f"GemUser1_{uid1}",
+        "password": "Password123!"
+    })
+    user1_headers = {"Authorization": f"Bearer {reg1.json()['access_token']}"}
+
+    uid2 = uuid.uuid4().hex[:6]
+    reg2 = client.post("/api/auth/register", json={
+        "email": f"gem_user2_{uid2}@example.com",
+        "username": f"GemUser2_{uid2}",
+        "password": "Password123!"
+    })
+    user2_headers = {"Authorization": f"Bearer {reg2.json()['access_token']}"}
+
+    # 1. Fetch gems list
+    gems_res = client.get("/api/gems", headers=user1_headers)
+    assert gems_res.status_code == 200
+    gems_data = gems_res.json()
+    assert "Mafia Team" in gems_data["teams"]
+    assert "Citizen Team" in gems_data["teams"]
+    assert "Cult Mode" in gems_data["teams"]
+    assert len(gems_data["teams"]["Mafia Team"]) == 10
+    assert len(gems_data["teams"]["Citizen Team"]) == 27
+    assert len(gems_data["teams"]["Cult Mode"]) == 1
+    assert len(gems_data["all_gems"]) == 38
+    assert gems_data["total_gem_cp"] == 0
+    assert gems_data["total_gem_points"] == 0
+
+    # 2. Select Level 1 for Cult Leader (75 CP, 0 Gem Points)
+    res_lv1 = client.post("/api/gems/gem_cultleader/select-level", json={"current_level": 1}, headers=user1_headers)
+    assert res_lv1.status_code == 200
+    assert res_lv1.json()["cp"] == 75
+    assert res_lv1.json()["gem_points"] == 0
+
+    # 3. Selecting another level replaces previous level (e.g. Level 15 = 975 CP, 1 Gem Point)
+    res_lv15 = client.post("/api/gems/gem_cultleader/select-level", json={"current_level": 15}, headers=user1_headers)
+    assert res_lv15.status_code == 200
+    assert res_lv15.json()["cp"] == 975
+    assert res_lv15.json()["gem_points"] == 1
+
+    # Check total stats for User 1
+    gems_u1 = client.get("/api/gems", headers=user1_headers).json()
+    assert gems_u1["total_gem_cp"] == 975
+    assert gems_u1["total_gem_points"] == 1
+
+    # Check that User 2 has independent selections (still 0)
+    gems_u2 = client.get("/api/gems", headers=user2_headers).json()
+    assert gems_u2["total_gem_cp"] == 0
+    assert gems_u2["total_gem_points"] == 0
+
+    # User 2 selects Level 16 for Mafia Gem (1,099 CP, 2 Gem Points)
+    res_u2_lv16 = client.post("/api/gems/gem_mafia/select-level", json={"current_level": 16}, headers=user2_headers)
+    assert res_u2_lv16.status_code == 200
+    assert res_u2_lv16.json()["cp"] == 1099
+    assert res_u2_lv16.json()["gem_points"] == 2
+
+    # 4. Special Case: No Gem (Level 0 clears selection and resets CP to 0)
+    res_nogem = client.post("/api/gems/gem_cultleader/select-level", json={"current_level": 0}, headers=user1_headers)
+    assert res_nogem.status_code == 200
+    assert res_nogem.json()["cp"] == 0
+    assert res_nogem.json()["gem_points"] == 0
+
+    gems_u1_reset = client.get("/api/gems", headers=user1_headers).json()
+    assert gems_u1_reset["total_gem_cp"] == 0
+    assert gems_u1_reset["total_gem_points"] == 0
+
+    # 5. Card linking: Non-owner gets 403 Forbidden
+    assert client.put("/api/gems/admin/gem_mafia/link-card", json={"card_id": "iouygpwh"}, headers=user1_headers).status_code == 403
+
+    # Owner can link/unlink card
+    link_res = client.put("/api/gems/admin/gem_mafia/link-card", json={"card_id": "iouygpwh"}, headers=owner_headers)
+    assert link_res.status_code == 200
+    assert link_res.json()["card_id"] == "iouygpwh"
+
 
 

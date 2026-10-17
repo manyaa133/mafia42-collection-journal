@@ -246,7 +246,54 @@ def seed_database(db: Session):
         db.commit()
         print("Official CP wallets seeded.")
 
-    # 5. Ensure existing wallet CP values match specification
+    # 6. Ensure Gems exist if category is empty
+    gem_count = db.query(CatalogueItem).filter(CatalogueItem.category == "gems").count()
+    if gem_count == 0:
+        seed_gems_path = os.path.join(WORKSPACE_DIR, "database", "seed_gems.json")
+        if os.path.exists(seed_gems_path):
+            with open(seed_gems_path, "r", encoding="utf-8") as f:
+                gems_data = json.load(f)
+            for g in gems_data:
+                extra_json = json.dumps({
+                    "team": g.get("team"),
+                    "role_id": g.get("role_id"),
+                    "card_name": g.get("card_name"),
+                    "badge_image": g.get("badge_image"),
+                    "levels": g.get("levels", [])
+                }, ensure_ascii=False)
+                c_item = CatalogueItem(
+                    id=g.get("id"),
+                    category="gems",
+                    name=g.get("name"),
+                    character=g.get("character"),
+                    card_id=g.get("card_id", ""),
+                    level=16,
+                    cp=1099,
+                    description=f"{g.get('team')} gem for {g.get('character')}",
+                    extra=extra_json,
+                    image=g.get("image", ""),
+                    logo_image=g.get("badge_image", ""),
+                    display_order=g.get("display_order", 0),
+                )
+                db.add(c_item)
+            db.commit()
+            print("Gems collection items seeded.")
+
+    # 7. Ensure Cult Leader is categorized under Cult Mode
+    cult_gem = db.query(CatalogueItem).filter(CatalogueItem.id == "gem_cultleader").first()
+    if cult_gem and cult_gem.extra:
+        try:
+            extra_data = json.loads(cult_gem.extra)
+            if extra_data.get("team") != "Cult Mode":
+                extra_data["team"] = "Cult Mode"
+                cult_gem.extra = json.dumps(extra_data, ensure_ascii=False)
+                cult_gem.description = "Cult Mode gem for Cult Leader"
+                db.commit()
+                print("Migrated Cult Leader to Cult Mode.")
+        except Exception:
+            pass
+
+    # 8. Ensure existing wallet CP values match specification
     wallets = db.query(CatalogueItem).filter(CatalogueItem.category == "wallets").all()
     for w in wallets:
         try:
@@ -262,4 +309,5 @@ def seed_database(db: Session):
         if cp_w.cp != 0:
             cp_w.cp = 0
     db.commit()
+
 
