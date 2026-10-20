@@ -29,6 +29,8 @@ def get_all_catalogue_items(
         "wallets": [],
         "cp_wallets": [],
         "gems": [],
+        "stickers": [],
+        "speech_bubbles": [],
         "postcards": [],
         "refinements": [],
     }

@@ -1,0 +1,146 @@
+{
+  "current_batch_number": 1,
+  "current_batch": [
+    {
+      "label": "Candidate 1",
+      "type": "item_frame",
+      "repo_path": "assets/item/frame/frame_gold.webp",
+      "filename": "frame_gold.webp",
+      "url": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_gold.webp",
+      "hash": "8eb07ed89f389f23ca16bca24897c3038f137b97806f3e5aa12b53c6197d86b4",
+      "dimensions": "146 × 144",
+      "is_unused": true,
+      "already_used_by": null,
+      "reason": "Shared batch frame asset (146 × 144)"
+    },
+    {
+      "label": "Candidate 2",
+      "type": "item_frame",
+      "repo_path": "assets/item/frame/frame_gold_new.webp",
+      "filename": "frame_gold_new.webp",
+      "url": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_gold_new.webp",
+      "hash": "d014ad6a534b5ab22c29716b01185527f70c29a6410ece249e7c8effc8e77930",
+      "dimensions": "146 × 144",
+      "is_unused": true,
+      "already_used_by": null,
+      "reason": "Shared batch frame asset (146 × 144)"
+    },
+    {
+      "label": "Candidate 3",
+      "type": "item_frame",
+      "repo_path": "assets/item/frame/frame_lab.webp",
+      "filename": "frame_lab.webp",
+      "url": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_lab.webp",
+      "hash": "6fcdb96f082a2efed60821ed541e9b46532266bf95899c51ba9b0942ac099a40",
+      "dimensions": "400 × 400",
+      "is_unused": true,
+      "already_used_by": null,
+      "reason": "Shared batch frame asset (400 × 400)"
+    },
+    {
+      "label": "Candidate 4",
+      "type": "item_frame",
+      "repo_path": "assets/item/frame/frame_platinum_new.webp",
+      "filename": "frame_platinum_new.webp",
+      "url": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_platinum_new.webp",
+      "hash": "33d8ec413b6b31848ec007f4d5b0c7eb1b1dd01afcd0146be98e46bdd89b788f",
+      "dimensions": "146 × 144",
+      "is_unused": true,
+      "already_used_by": null,
+      "reason": "Shared batch frame asset (146 × 144)"
+    },
+    {
+      "label": "Candidate 5",
+      "type": "item_frame",
+      "repo_path": "assets/item/frame/frame_platinum_socket.webp",
+      "filename": "frame_platinum_socket.webp",
+      "url": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_platinum_socket.webp",
+      "hash": "99572099eaa1094ab35efcd812ad5512f5fd3c35068bd3ecb72a3f250446c15b",
+      "dimensions": "400 × 400",
+      "is_unused": true,
+      "already_used_by": null,
+      "reason": "Shared batch frame asset (400 × 400)"
+    }
+  ],
+  "presented_history_hashes": [
+    "8eb07ed89f389f23ca16bca24897c3038f137b97806f3e5aa12b53c6197d86b4",
+    "d014ad6a534b5ab22c29716b01185527f70c29a6410ece249e7c8effc8e77930",
+    "6fcdb96f082a2efed60821ed541e9b46532266bf95899c51ba9b0942ac099a40",
+    "33d8ec413b6b31848ec007f4d5b0c7eb1b1dd01afcd0146be98e46bdd89b788f",
+    "99572099eaa1094ab35efcd812ad5512f5fd3c35068bd3ecb72a3f250446c15b"
+  ],
+  "presented_history_urls": [
+    "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_gold.webp",
+    "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_gold_new.webp",
+    "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_lab.webp",
+    "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_platinum_new.webp",
+    "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_platinum_socket.webp"
+  ],
+  "batch_history": [
+    {
+      "batch_number": 1,
+      "candidates": [
+        {
+          "label": "Candidate 1",
+          "type": "item_frame",
+          "repo_path": "assets/item/frame/frame_gold.webp",
+          "filename": "frame_gold.webp",
+          "url": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_gold.webp",
+          "hash": "8eb07ed89f389f23ca16bca24897c3038f137b97806f3e5aa12b53c6197d86b4",
+          "dimensions": "146 × 144",
+          "is_unused": true,
+          "already_used_by": null,
+          "reason": "Shared batch frame asset (146 × 144)"
+        },
+        {
+          "label": "Candidate 2",
+          "type": "item_frame",
+          "repo_path": "assets/item/frame/frame_gold_new.webp",
+          "filename": "frame_gold_new.webp",
+          "url": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_gold_new.webp",
+          "hash": "d014ad6a534b5ab22c29716b01185527f70c29a6410ece249e7c8effc8e77930",
+          "dimensions": "146 × 144",
+          "is_unused": true,
+          "already_used_by": null,
+          "reason": "Shared batch frame asset (146 × 144)"
+        },
+        {
+          "label": "Candidate 3",
+          "type": "item_frame",
+          "repo_path": "assets/item/frame/frame_lab.webp",
+          "filename": "frame_lab.webp",
+          "url": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_lab.webp",
+          "hash": "6fcdb96f082a2efed60821ed541e9b46532266bf95899c51ba9b0942ac099a40",
+          "dimensions": "400 × 400",
+          "is_unused": true,
+          "already_used_by": null,
+          "reason": "Shared batch frame asset (400 × 400)"
+        },
+        {
+          "label": "Candidate 4",
+          "type": "item_frame",
+          "repo_path": "assets/item/frame/frame_platinum_new.webp",
+          "filename": "frame_platinum_new.webp",
+          "url": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_platinum_new.webp",
+          "hash": "33d8ec413b6b31848ec007f4d5b0c7eb1b1dd01afcd0146be98e46bdd89b788f",
+          "dimensions": "146 × 144",
+          "is_unused": true,
+          "already_used_by": null,
+          "reason": "Shared batch frame asset (146 × 144)"
+        },
+        {
+          "label": "Candidate 5",
+          "type": "item_frame",
+          "repo_path": "assets/item/frame/frame_platinum_socket.webp",
+          "filename": "frame_platinum_socket.webp",
+          "url": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/frame/frame_platinum_socket.webp",
+          "hash": "99572099eaa1094ab35efcd812ad5512f5fd3c35068bd3ecb72a3f250446c15b",
+          "dimensions": "400 × 400",
+          "is_unused": true,
+          "already_used_by": null,
+          "reason": "Shared batch frame asset (400 × 400)"
+        }
+      ]
+    }
+  ]
+}

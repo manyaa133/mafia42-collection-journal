@@ -424,7 +424,164 @@ export const api = {
     }
     return res.json();
   },
+
+  // Image Replacement Approval API
+  async getImageProposals(category?: string, status?: string): Promise<{ proposals: ImageProposal[]; total: number }> {
+    const params = new URLSearchParams();
+    if (category) params.append("category", category);
+    if (status) params.append("status_filter", status);
+    const res = await fetch(`${BASE_URL}/admin/image-proposals?${params.toString()}`, {
+      headers: getAuthHeader(),
+    });
+    if (!res.ok) throw new Error("Failed to load image proposals");
+    return res.json();
+  },
+
+  async getImageProposalsSummary(): Promise<{ summary: Record<string, { total: number; pending: number; approved: number; rejected: number }> }> {
+    const res = await fetch(`${BASE_URL}/admin/image-proposals/summary`, {
+      headers: getAuthHeader(),
+    });
+    if (!res.ok) throw new Error("Failed to load image proposals summary");
+    return res.json();
+  },
+
+  async reviewImageProposal(data: {
+    item_id: string;
+    action: "approve" | "reject" | "skip";
+    category: string;
+    proposed_url?: string;
+    proposed_logo_url?: string;
+    target_field?: "artwork" | "logo" | "both";
+  }): Promise<{ message: string; status?: string }> {
+    const res = await fetch(`${BASE_URL}/admin/image-proposals/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeader() },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to submit review decision");
+    }
+    return res.json();
+  },
+
+  async getFrameBatchStatus(): Promise<{
+    current_batch_number: number;
+    current_batch: ImageCandidate[];
+    pending_frames_count: number;
+    total_approved_frames: number;
+    presented_count: number;
+  }> {
+    const res = await fetch(`${BASE_URL}/admin/frames/batch-status`, {
+      headers: getAuthHeader(),
+    });
+    if (!res.ok) return { current_batch_number: 1, current_batch: [], pending_frames_count: 0, total_approved_frames: 0, presented_count: 0 };
+    return res.json();
+  },
+
+  async nextFrameBatch(): Promise<{
+    message: string;
+    current_batch_number: number;
+    current_batch: ImageCandidate[];
+    pending_frames_count: number;
+  }> {
+    const res = await fetch(`${BASE_URL}/admin/frames/next-batch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeader() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to advance to next batch");
+    }
+    return res.json();
+  },
+
+  async getSkinBatchStatus(mode: string = "skin_main"): Promise<{
+    mode: string;
+    current_batch_number: number;
+    current_batch: ImageCandidate[];
+    pending_skins_count: number;
+    total_approved_skins: number;
+    presented_count: number;
+    available_batches?: number[];
+  }> {
+    const res = await fetch(`${BASE_URL}/admin/skins/batch-status?mode=${encodeURIComponent(mode)}`, {
+      headers: getAuthHeader(),
+    });
+    if (!res.ok) return { mode, current_batch_number: 1, current_batch: [], pending_skins_count: 0, total_approved_skins: 0, presented_count: 0, available_batches: [1] };
+    return res.json();
+  },
+
+  async nextSkinBatch(mode: string = "skin_main"): Promise<{
+    message: string;
+    mode: string;
+    current_batch_number: number;
+    current_batch: ImageCandidate[];
+    pending_skins_count: number;
+    available_batches?: number[];
+  }> {
+    const res = await fetch(`${BASE_URL}/admin/skins/next-batch?mode=${encodeURIComponent(mode)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeader() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to advance to next batch");
+    }
+    return res.json();
+  },
+
+  async switchSkinBatch(mode: string = "skin_main", batchNumber: number): Promise<{
+    message: string;
+    mode: string;
+    current_batch_number: number;
+    current_batch: ImageCandidate[];
+    pending_skins_count: number;
+    available_batches?: number[];
+  }> {
+    const res = await fetch(`${BASE_URL}/admin/skins/switch-batch?mode=${encodeURIComponent(mode)}&batch_number=${batchNumber}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeader() },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to switch batch");
+    }
+    return res.json();
+  },
 };
+
+export interface ImageCandidate {
+  label: string;
+  type: string;
+  repo_path: string;
+  url: string;
+  filename?: string;
+  dimensions?: string;
+  is_unused?: boolean;
+  already_used_by?: string | null;
+  reason?: string;
+}
+
+export interface ImageProposal {
+  id: string;
+  name: string;
+  category: string;
+  character?: string;
+  current_image: string;
+  current_logo?: string;
+  proposed_repo_path: string;
+  proposed_url: string;
+  proposed_logo_repo_path?: string;
+  proposed_logo_url?: string;
+  status: "pending" | "approved" | "rejected";
+  decision_details?: any;
+  candidates?: ImageCandidate[];
+  level?: number;
+  role_id?: string;
+  skin_id?: string;
+  card_id?: string;
+}
 
 export interface GemLevelItem {
   level: number;

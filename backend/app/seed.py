@@ -61,6 +61,8 @@ def seed_database(db: Session):
             "nameplates": "nameplates",
             "wallets": "wallets",
             "cp_wallets": "cp_wallets",
+            "stickers": "stickers",
+            "speech_bubbles": "speech_bubbles",
         }
 
         for cat_key, cat_name in categories_map.items():

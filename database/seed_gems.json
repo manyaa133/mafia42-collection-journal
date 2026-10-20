@@ -4451,7 +4451,7 @@
         "description": "Bloodstone ore freshly mined from the mine. When equipped, it increases the assignment probability of mercenaries.",
         "cp": 75,
         "gem_points": 0,
-        "image": "/assets/gems/mercenary/item_gem_lv1_mercenary.png"
+        "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/gem/mercenary/item_gem_lv1_mercenary.png"
       },
       {
         "level": 2,
@@ -4483,7 +4483,7 @@
         "description": "A mid-level bloodstone gem refined into a simple shape. When equipped, it increases the assignment probability and acquisition rubles of mercenaries.",
         "cp": 175,
         "gem_points": 0,
-        "image": "/assets/gems/mercenary/item_gem_lv5_mercenary.png"
+        "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/gem/mercenary/item_gem_lv5_mercenary.png"
       },
       {
         "level": 6,
@@ -4491,7 +4491,7 @@
         "description": "A mid-level bloodstone gem polished to shine brightly. When equipped, it increases the assignment probability and acquisition rubles of mercenaries.",
         "cp": 219,
         "gem_points": 0,
-        "image": "/assets/gems/mercenary/item_gem_lv6_mercenary.png"
+        "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/gem/mercenary/item_gem_lv6_mercenary.png"
       },
       {
         "level": 7,
@@ -4515,7 +4515,7 @@
         "description": "A top-quality bloodstone gem refined into an enchanting shape. When equipped, it increases the mercenary's assignment probability, rubles earned, and RP increase rate.",
         "cp": 399,
         "gem_points": 0,
-        "image": "/assets/gems/mercenary/item_gem_lv9_mercenary.png"
+        "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/gem/mercenary/item_gem_lv9_mercenary.png"
       },
       {
         "level": 10,
@@ -4531,7 +4531,7 @@
         "description": "A bloodstone gem refined by a legendary craftsman. When equipped, it increases the mercenary's assignment probability, rubles earned, and RP increase rate.",
         "cp": 559,
         "gem_points": 0,
-        "image": "/assets/gems/mercenary/item_gem_lv11_mercenary.png"
+        "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/gem/mercenary/item_gem_lv11_mercenary.png"
       },
       {
         "level": 12,
@@ -4594,7 +4594,7 @@
         "description": "Citrine ore freshly mined from the mine. When installed, it increases the probability of being assigned to a civil servant.",
         "cp": 75,
         "gem_points": 0,
-        "image": "/assets/gems/official/item_gem_lv1_official.png"
+        "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/gem/official/item_gem_lv1_official.png"
       },
       {
         "level": 2,
@@ -4602,7 +4602,7 @@
         "description": "A citrine gemstone polished to shine brightly. When installed, it increases the probability of being assigned to a civil servant.",
         "cp": 91,
         "gem_points": 0,
-        "image": "/assets/gems/official/item_gem_lv2_official.png"
+        "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/gem/official/item_gem_lv2_official.png"
       },
       {
         "level": 3,
@@ -4610,7 +4610,7 @@
         "description": "A low-grade citrine gem refined into a rough shape. When installed, it increases the probability of being assigned to a civil servant.",
         "cp": 111,
         "gem_points": 0,
-        "image": "/assets/gems/official/item_gem_lv3_official.png"
+        "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/gem/official/item_gem_lv3_official.png"
       },
       {
         "level": 4,
@@ -4626,7 +4626,7 @@
         "description": "A mid-grade gem of citrine refined into a simple shape. When equipped, it increases the assignment probability and acquisition rubles of civil servants.",
         "cp": 175,
         "gem_points": 0,
-        "image": "/assets/gems/official/item_gem_lv5_official.png"
+        "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/gem/official/item_gem_lv5_official.png"
       },
       {
         "level": 6,
@@ -4658,7 +4658,7 @@
         "description": "A top-quality gem of citrine refined into an enchanting shape. When equipped, it increases the assignment probability of civil servants, the rubles earned, and the RP increase rate.",
         "cp": 399,
         "gem_points": 0,
-        "image": "/assets/gems/official/item_gem_lv9_official.png"
+        "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/gem/official/item_gem_lv9_official.png"
       },
       {
         "level": 10,
@@ -4666,7 +4666,7 @@
         "description": "A top-quality citrine gem polished to shine brilliantly. When equipped, it increases the assignment probability of civil servants, the rubles earned, and the RP increase rate.",
         "cp": 475,
         "gem_points": 0,
-        "image": "/assets/gems/official/item_gem_lv10_official.png"
+        "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/gem/official/item_gem_lv10_official.png"
       },
       {
         "level": 11,
@@ -4698,7 +4698,7 @@
         "description": "A citrine gem that has been miraculously refined and polished to a brilliant shine. When equipped, it increases the assignment probability of civil servants, the rubles earned, and the RP increase rate.",
         "cp": 859,
         "gem_points": 0,
-        "image": "/assets/gems/official/item_gem_lv14_official.png"
+        "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/gem/official/item_gem_lv14_official.png"
       },
       {
         "level": 15,

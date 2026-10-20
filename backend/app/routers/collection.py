@@ -9,7 +9,7 @@ from backend.app.auth import get_current_user
 
 router = APIRouter(prefix="/collection", tags=["Personal Collection"])
 
-CP_CATEGORIES = {"skins", "gems", "frames", "nameplates", "wallets"}
+CP_CATEGORIES = {"skins", "gems", "frames", "nameplates", "wallets", "stickers", "speech_bubbles"}
 
 def get_cp_wallet_id_for_cp(user_cp: int) -> str:
     """Determine the eligible CP Wallet ID based on total collection points."""
@@ -52,8 +52,8 @@ GEM_LEVEL_CP_MAP = {
 
 def calculate_user_cp(user_id: int, db: Session) -> int:
     """Calculate the total CP earned by the user across all eligible categories."""
-    # Standard owned items (skins, frames, nameplates, wallets)
-    standard_categories = {"skins", "frames", "nameplates", "wallets"}
+    # Standard owned items (skins, frames, nameplates, wallets, stickers, speech_bubbles)
+    standard_categories = {"skins", "frames", "nameplates", "wallets", "stickers", "speech_bubbles"}
     owned_items = (
         db.query(CatalogueItem.cp)
         .join(UserCollectionItem, UserCollectionItem.item_id == CatalogueItem.id)
@@ -263,8 +263,8 @@ def get_collection_cp_stats(
     user_gems = db.query(UserGem).filter(UserGem.user_id == current_user.id).all()
     user_gem_levels = {ug.item_id: ug.current_level for ug in user_gems}
 
-    # Categories contributing to CP: skins, frames, nameplates, wallets
-    standard_cp_categories = {"skins", "frames", "nameplates", "wallets"}
+    # Categories contributing to CP: skins, frames, nameplates, wallets, stickers, speech_bubbles
+    standard_cp_categories = {"skins", "frames", "nameplates", "wallets", "stickers", "speech_bubbles"}
 
     category_breakdown = {
         "skins": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
@@ -275,6 +275,8 @@ def get_collection_cp_stats(
         "nameplates": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
         "frames": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
         "gems": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
+        "stickers": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
+        "speech_bubbles": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
         "postcards": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
         "refinements": {"total": 0, "owned": 0, "max_cp": 0, "user_cp": 0},
     }

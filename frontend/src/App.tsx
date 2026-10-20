@@ -6,19 +6,23 @@ import {
   ChevronDown, Plus, X, Star, Check, Menu, TrendingUp, TrendingDown,
   Pin, Calendar, Filter, ArrowLeft, ArrowRight, ArrowUp, ArrowDown,
   Pencil, Trash2, Eye, Download, Upload, Shield, Lock, LogIn, LogOut,
-  CheckCircle, AlertCircle, RefreshCw, ExternalLink, Flame, Users
+  CheckCircle, AlertCircle, RefreshCw, ExternalLink, Flame, Users,
+  Sun, Moon, Smile, MessageSquare
 } from 'lucide-react';
 import { api, User, CatalogueItem, CPStats, UserCollectionData, Goal, Note, AuditLog, AdminUser, GemItem, GemsResponse, GemLevelItem } from './api';
+import { ImageReviewPage } from './components/ImageReviewPage';
 
 const CATEGORY_CONFIG: Record<string, { title: string; singular: string; subtitle: string; isLogo: boolean }> = {
-  skins: { title: "Skins", singular: "Skin", subtitle: "Collectible skins with CP values, character assignments, and logos.", isLogo: true },
+  skins: { title: "Skins", singular: "Skin", subtitle: "Collectible skins with CP values, character assignments, and logos.", isLogo: false },
   icons: { title: "Icons", singular: "Icon", subtitle: "Track every icon, unlock condition, and category.", isLogo: false },
-  cards: { title: "Cards", singular: "Card", subtitle: "Character and role cards with level and playable attributes.", isLogo: true },
+  cards: { title: "Cards", singular: "Card", subtitle: "Character and role cards with level and playable attributes.", isLogo: false },
   wallets: { title: "Wallets", singular: "Wallet", subtitle: "Collectible wallets with logo and 3 associated detailed images.", isLogo: true },
   cp_wallets: { title: "CP Wallets", singular: "CP Wallet", subtitle: "Collection Point tier wallets with CP range requirements and 3 associated detailed images.", isLogo: true },
   nameplates: { title: "NP", singular: "Nameplate", subtitle: "Collectible nameplates with official CP and match metadata.", isLogo: false },
   frames: { title: "Frames", singular: "Frame", subtitle: "Collectible portrait frames with CP values.", isLogo: false },
   gems: { title: "Gems", singular: "Gem", subtitle: "Gems tracking refinement levels 1 through 16.", isLogo: false },
+  stickers: { title: "Stickers", singular: "Sticker Pack", subtitle: "Collectible emoticon and sticker packs with unlimited-by-design stickers.", isLogo: false },
+  speech_bubbles: { title: "Speech Bubbles", singular: "Speech Bubble", subtitle: "In-game chat and room dialogue balloons with collection CP.", isLogo: false },
   postcards: { title: "PC", singular: "Postcard", subtitle: "Collectible postcards and letters.", isLogo: false },
   refinements: { title: "Refinements", singular: "Refinement", subtitle: "Equipment refinements and enhancements.", isLogo: false },
 };
@@ -66,25 +70,45 @@ export default function App() {
   const [adminAuditLogs, setAdminAuditLogs] = useState<AuditLog[]>([]);
   const [adminTab, setAdminTab] = useState<"catalogue" | "users" | "audit">("catalogue");
 
-  // Load initial data
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Theme State (Dark Mode default, persisted in localStorage)
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    return (localStorage.getItem("m42_theme") as "light" | "dark") || "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.body.setAttribute("data-theme", theme);
+    localStorage.setItem("m42_theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === "dark" ? "light" : "dark"));
+  };
+
   useEffect(() => {
     loadInitialData();
   }, []);
 
   async function loadInitialData() {
     setLoading(true);
+    setLoadError(null);
     try {
-      const user = await api.getMe();
+      // Parallelize auth check and catalogue load for immediate data availability
+      const [user, catData] = await Promise.all([
+        api.getMe().catch(() => null),
+        api.getCatalogue(),
+      ]);
       setCurrentUser(user);
-
-      const catData = await api.getCatalogue();
-      setCatalogue(catData);
+      setCatalogue(catData || {});
 
       if (user) {
         await loadUserData();
       }
-    } catch (err) {
-      console.error("Error loading data:", err);
+    } catch (err: any) {
+      console.error("Error loading catalogue data:", err);
+      setLoadError(err?.message || "Failed to load catalogue. Please check your connection.");
     } finally {
       setLoading(false);
     }
@@ -104,6 +128,19 @@ export default function App() {
       setNotes(notesData);
     } catch (err) {
       console.error("Error loading user collection:", err);
+    }
+  }
+
+  async function loadCatalogue() {
+    try {
+      const catData = await api.getCatalogue();
+      setCatalogue(catData || {});
+      if (currentUser) {
+        const statsData = await api.getStats();
+        setStats(statsData);
+      }
+    } catch (err: any) {
+      console.error("Failed to load catalogue:", err);
     }
   }
 
@@ -129,13 +166,15 @@ export default function App() {
       ...(catalogue.nameplates || []),
       ...(catalogue.frames || []),
       ...(catalogue.gems || []),
+      ...(catalogue.stickers || []),
+      ...(catalogue.speech_bubbles || []),
       ...(catalogue.postcards || []),
       ...(catalogue.refinements || []),
     ];
     const targetItem = allCatalogueItems.find(it => it.id === itemId);
     const itemCp = Number(targetItem?.cp || 0);
     const itemCat = targetItem?.category || "";
-    const isCpEligible = ["skins", "gems", "frames", "nameplates", "wallets"].includes(itemCat);
+    const isCpEligible = ["skins", "gems", "frames", "nameplates", "wallets", "stickers", "speech_bubbles"].includes(itemCat);
 
     const isCurrentlyOwned = collection.owned_item_ids.includes(itemId);
     const cpDelta = isCpEligible ? (isCurrentlyOwned ? -itemCp : itemCp) : 0;
@@ -337,6 +376,8 @@ export default function App() {
         { id: "nameplates", label: "NP", icon: Tag, count: catalogue.nameplates?.length },
         { id: "frames", label: "Frames", icon: Pin, count: catalogue.frames?.length },
         { id: "gems", label: "Gems", icon: Coins, count: catalogue.gems?.length },
+        { id: "stickers", label: "Stickers", icon: Smile, count: catalogue.stickers?.length },
+        { id: "speech_bubbles", label: "Speech Bubbles", icon: MessageSquare, count: catalogue.speech_bubbles?.length },
       ]
     },
     {
@@ -367,13 +408,21 @@ export default function App() {
     navSections.push({
       label: "Owner Administration",
       items: [
-        { id: "admin", label: "Admin Dashboard", icon: Shield }
+        { id: "admin", label: "Admin Dashboard", icon: Shield },
+        { id: "image_review", label: "Image Approval", icon: Sparkles }
+      ]
+    });
+  } else {
+    navSections.push({
+      label: "Approval System",
+      items: [
+        { id: "image_review", label: "Image Approval", icon: Sparkles }
       ]
     });
   }
 
   return (
-    <div className="m42-app">
+    <div className="m42-app" data-theme={theme}>
       <div className="m42-bg" />
 
       {/* Sidebar */}
@@ -431,6 +480,18 @@ export default function App() {
           </div>
 
           <div className="m42-header-right">
+            {/* Quick Theme Toggle Button */}
+            <button
+              type="button"
+              className="m42-btn m42-btn-ghost"
+              title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+              onClick={toggleTheme}
+              style={{ padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              {theme === "dark" ? <Sun size={15} style={{ color: "#FCD34D" }} /> : <Moon size={15} style={{ color: "var(--dark-teal)" }} />}
+              <span style={{ fontSize: 11.5, fontWeight: 700 }}>{theme === "dark" ? "Light" : "Dark"}</span>
+            </button>
+
             {currentUser && stats && (
               <div className="m42-cp-pill" title="Personal Collection Points">
                 <span className="m42-cp-dot" />
@@ -481,8 +542,25 @@ export default function App() {
 
         {/* Dynamic Page Content */}
         <main className="m42-content">
-          {activeNav === "home" && (
-            <HomePage
+          {loading && (!catalogue || Object.keys(catalogue).length === 0) ? (
+            <div style={{ textAlign: "center", padding: "100px 20px" }}>
+              <RefreshCw size={36} className="spin" color="var(--dark-teal)" style={{ margin: "0 auto 16px" }} />
+              <h3 style={{ fontSize: 18, color: "var(--deep-teal)", fontWeight: 700, margin: "0 0 8px" }}>Loading Mafia42 Collection...</h3>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>Fetching catalogue items and collection data.</p>
+            </div>
+          ) : loadError && (!catalogue || Object.keys(catalogue).length === 0) ? (
+            <div style={{ textAlign: "center", padding: "60px 20px", background: "#FFFFFF", border: "1.5px solid #EF4444", borderRadius: 12, maxWidth: 520, margin: "60px auto", boxShadow: "0 1px 3px rgba(16, 43, 45, 0.05)" }}>
+              <AlertCircle size={40} style={{ color: "#EF4444", margin: "0 auto 14px" }} />
+              <h3 style={{ fontSize: 18, color: "var(--deep-teal)", fontWeight: 700, margin: "0 0 8px" }}>Unable to load catalogue</h3>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>{loadError}</p>
+              <button type="button" className="m42-btn m42-btn-primary" onClick={loadInitialData}>
+                <RefreshCw size={14} style={{ marginRight: 6 }} /> Retry Loading
+              </button>
+            </div>
+          ) : (
+            <>
+              {activeNav === "home" && (
+                <HomePage
               catalogue={catalogue}
               stats={stats}
               currentUser={currentUser}
@@ -575,7 +653,13 @@ export default function App() {
           )}
 
           {activeNav === "settings" && (
-            <SettingsPage currentUser={currentUser} onExport={() => api.exportCatalogue()} />
+            <SettingsPage
+              currentUser={currentUser}
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              onSetTheme={setTheme}
+              onExport={() => api.exportCatalogue()}
+            />
           )}
 
           {activeNav === "admin" && currentUser?.role === "owner" && (
@@ -593,6 +677,15 @@ export default function App() {
             />
           )}
 
+          {activeNav === "image_review" && (
+            <ImageReviewPage
+              currentUser={currentUser}
+              onOpenAuth={() => setAuthModalOpen(true)}
+            />
+          )}
+          </>
+          )}
+
           {/* Unofficial Fan-Made Disclaimer Footer */}
           <AppFooter />
         </main>
@@ -607,6 +700,8 @@ export default function App() {
           skins={catalogue.skins || []}
           collection={collection}
           stats={stats}
+          currentUser={currentUser}
+          onRefreshCatalogue={loadCatalogue}
           isOwned={collection.owned_item_ids.includes(focusedItem.item.id)}
           onClose={() => setFocusedItem(null)}
           onToggleOwned={() => handleToggleOwned(focusedItem.item.id)}
@@ -729,11 +824,12 @@ function HomePage({ catalogue, stats, currentUser, onNavigate, onOpenAuth, onOpe
 
       {/* Top Overview Cards */}
       <div className="m42-stats-grid">
-        <div className="m42-stat-card" style={{ display: "flex", alignItems: "center", gap: 20 }}>
+        <div className="m42-stat-card" style={{ display: "flex", alignItems: "center", gap: 18 }}>
           <ProgressRing percent={completionPct} />
           <div>
-            <div className="m42-stat-label">Collection Completion</div>
-            <div className="m42-stat-value">{Math.round(completionPct)}%</div>
+            <div className="m42-stat-label" style={{ fontSize: 15, fontWeight: 700, color: "var(--deep-teal)", marginBottom: 4 }}>
+              Collection Completion
+            </div>
             <div className="m42-stat-sub">Across Skins, Gems, Frames &amp; NP</div>
           </div>
         </div>
@@ -914,6 +1010,251 @@ function CategoryItemsPage({
     });
   }, [items, searchQuery]);
 
+  // Group skins by Card in Card catalogue order
+  const skinGroups = useMemo(() => {
+    if (category !== "skins") return null;
+
+    const cardMap = new Map<string, CatalogueItem[]>();
+    const uncategorized: CatalogueItem[] = [];
+
+    // Ensure all known cards have a bucket in Card catalogue order
+    for (const c of (cards || [])) {
+      cardMap.set(c.id, []);
+    }
+
+    for (const skin of filteredItems) {
+      if (skin.card_id && cardMap.has(skin.card_id)) {
+        cardMap.get(skin.card_id)!.push(skin);
+      } else {
+        const matched = (cards || []).find((c: any) => c.character && c.character.toLowerCase() === (skin.character || "").toLowerCase());
+        if (matched && cardMap.has(matched.id)) {
+          cardMap.get(matched.id)!.push(skin);
+        } else {
+          uncategorized.push(skin);
+        }
+      }
+    }
+
+    const groups: { card: any; skins: CatalogueItem[] }[] = [];
+    for (const c of (cards || [])) {
+      const gSkins = cardMap.get(c.id) || [];
+      if (gSkins.length > 0) {
+        groups.push({ card: c, skins: gSkins });
+      }
+    }
+
+    if (uncategorized.length > 0) {
+      groups.push({
+        card: { id: "uncategorized", name: "Uncategorized", logo_image: null, image: null },
+        skins: uncategorized
+      });
+    }
+
+    return groups;
+  }, [category, filteredItems, cards]);
+
+  const renderItemTile = (item: CatalogueItem, idx: number) => {
+    const isOwned = collection.owned_item_ids.includes(item.id);
+    const imgSrc = cfg.isLogo ? (item.logo_image || item.image) : item.image;
+    const currentPosition = (items || []).findIndex((it: any) => it.id === item.id) + 1;
+    const isSticker = category === "stickers";
+    let stickerExtra: any = {};
+    if (isSticker && item.extra) {
+      try {
+        stickerExtra = JSON.parse(item.extra);
+      } catch (e) {}
+    }
+
+    return (
+      <div key={item.id} className="m42-logo-tile">
+        <button
+          type="button"
+          className="m42-logo-button"
+          onClick={() => onOpenItem(item)}
+          title={`View ${item.name}`}
+        >
+          {imgSrc ? (
+            <img 
+              src={imgSrc} 
+              alt={item.name} 
+              loading="lazy"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (category === "cards" && !target.src.includes('/assets/cards/card_')) {
+                  target.src = `/assets/cards/card_${item.id}.jpg`;
+                } else if (category === "skins" && !target.src.includes('/assets/skins/skin_')) {
+                  target.src = `/assets/skins/skin_${item.id}.jpg`;
+                } else {
+                  target.style.display = 'none';
+                  const fb = target.parentElement?.querySelector('.m42-logo-placeholder') as HTMLElement;
+                  if (fb) fb.style.display = 'flex';
+                }
+              }}
+            />
+          ) : null}
+          <div className="m42-logo-placeholder" style={{ display: imgSrc ? 'none' : 'flex' }}>
+            {item.name ? item.name.slice(0, 3).toUpperCase() : "IMG"}
+          </div>
+          {(category === "cards" || category === "skins") && item.logo_image && (
+            <span
+              className="m42-card-logo-badge"
+              title={`${item.name} Logo`}
+            >
+              <img
+                src={item.logo_image}
+                alt=""
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (category === "cards" && !target.src.includes('/assets/cards/card_logo_')) {
+                    target.src = `/assets/cards/card_logo_${item.id}.jpg`;
+                  } else if (category === "skins" && !target.src.includes('/assets/skins/skin_logo_')) {
+                    target.src = `/assets/skins/skin_logo_${item.id}.jpg`;
+                  }
+                }}
+              />
+            </span>
+          )}
+          {isOwned && <span className="m42-entry-status-badge">Owned</span>}
+          {category === "icons" && isOwner && (
+            <span
+              style={{
+                position: "absolute",
+                bottom: 4,
+                left: 4,
+                background: "rgba(16, 43, 45, 0.85)",
+                color: "#FFFFFF",
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "1px 5px",
+                borderRadius: 4,
+                border: "1px solid rgba(227, 239, 235, 0.3)"
+              }}
+              title={`Position #${currentPosition}`}
+            >
+              #{currentPosition}
+            </span>
+          )}
+        </button>
+
+        <div className="m42-logo-name" title={item.name} onClick={() => onOpenItem(item)} style={{ cursor: "pointer" }}>{item.name || "Unnamed"}</div>
+        <div className="m42-logo-meta">
+          {category === "cp_wallets" ? (
+            item.condition || ""
+          ) : isSticker ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "center" }}>
+              <span style={{
+                fontSize: 10.5,
+                fontWeight: 700,
+                padding: "1px 6px",
+                borderRadius: 4,
+                background: stickerExtra.acquisition_method === "Shop" ? "rgba(224, 159, 62, 0.15)" : "rgba(23, 63, 67, 0.1)",
+                color: stickerExtra.acquisition_method === "Shop" ? "#9c680c" : "var(--dark-teal)",
+                border: stickerExtra.acquisition_method === "Shop" ? "1px solid rgba(224, 159, 62, 0.3)" : "1px solid rgba(23, 63, 67, 0.2)"
+              }}>
+                {stickerExtra.acquisition_method === "Shop"
+                  ? `Shop (${stickerExtra.shop_price ? fmtNum(stickerExtra.shop_price) + " Lunas" : "Lunas"})`
+                  : "Event"}
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                {fmtNum(item.cp)} CP • {(stickerExtra.sticker_images || []).length} stickers
+              </span>
+            </div>
+          ) : item.cp > 0 ? (
+            `${fmtNum(item.cp)} CP`
+          ) : (
+            item.character || item.condition || ""
+          )}
+        </div>
+
+        <div className="m42-logo-actions">
+          {isOwner && (
+            <>
+              {category === "icons" && onMoveIcon && (
+                <span style={{ display: "inline-flex", gap: 2, marginRight: 2 }}>
+                  <button
+                    type="button"
+                    className="m42-btn m42-btn-ghost"
+                    style={{ padding: "3px 4px" }}
+                    title="Move Previous (Left)"
+                    onClick={e => { e.stopPropagation(); onMoveIcon(item.id, "prev"); }}
+                  >
+                    <ArrowLeft size={11} />
+                  </button>
+                  <button
+                    type="button"
+                    className="m42-btn m42-btn-ghost"
+                    style={{ padding: "3px 4px" }}
+                    title="Move Next (Right)"
+                    onClick={e => { e.stopPropagation(); onMoveIcon(item.id, "next"); }}
+                  >
+                    <ArrowRight size={11} />
+                  </button>
+                  <button
+                    type="button"
+                    className="m42-btn m42-btn-ghost"
+                    style={{ padding: "3px 5px", fontSize: 10, fontWeight: 700, color: "var(--peach)" }}
+                    title="Move to specific position"
+                    onClick={e => {
+                      e.stopPropagation();
+                      const target = prompt(`Move icon "${item.name}" to position (1 - ${items.length}):`, String(currentPosition));
+                      if (target) {
+                        const pos = parseInt(target, 10);
+                        if (!isNaN(pos) && pos >= 1 && pos <= items.length) {
+                          onMoveIcon(item.id, undefined, pos);
+                        } else {
+                          alert(`Target position must be between 1 and ${items.length}`);
+                        }
+                      }
+                    }}
+                  >
+                    #
+                  </button>
+                </span>
+              )}
+              <button
+                type="button"
+                className="m42-btn m42-btn-ghost"
+                style={{ padding: "4px 5px" }}
+                title="Edit Item"
+                onClick={() => onAdminEdit(item)}
+              >
+                <Pencil size={11} />
+              </button>
+              <button
+                type="button"
+                className="m42-btn m42-btn-ghost"
+                style={{ padding: "4px 5px", color: "#ff9999" }}
+                title="Delete Item"
+                onClick={() => onAdminDelete(item.id)}
+              >
+                <Trash2 size={11} />
+              </button>
+            </>
+          )}
+          {category === "cp_wallets" ? (
+            <span
+              className={`m42-owned-toggle ${isOwned ? "checked" : ""}`}
+              style={{ cursor: "default", opacity: isOwned ? 1 : 0.6 }}
+              title={isOwned ? "Active CP Tier (automatically awarded based on total CP)" : `Requires ${item.condition}`}
+              onClick={e => e.stopPropagation()}
+            >
+              <span>{isOwned ? "Active Tier" : "Locked"}</span>
+            </span>
+          ) : (
+            <label className={`m42-owned-toggle ${isOwned ? "checked" : ""}`} onClick={e => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={isOwned}
+                onChange={() => onToggleOwned(item.id)}
+              />
+              <span>I Have</span>
+            </label>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       <div className="m42-section-head">
@@ -931,155 +1272,141 @@ function CategoryItemsPage({
         )}
       </div>
 
-      <div className={cfg.isLogo ? "m42-items-grid" : "m42-items-grid"}>
-        {filteredItems.map((item: CatalogueItem, idx: number) => {
-          const isOwned = collection.owned_item_ids.includes(item.id);
-          const imgSrc = cfg.isLogo ? (item.logo_image || item.image) : item.image;
-          const currentPosition = (items || []).findIndex((it: any) => it.id === item.id) + 1;
+      {filteredItems.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 20px", background: "#FFFFFF", border: "1px solid var(--border-subtle)", borderRadius: 12, margin: "20px 0", boxShadow: "0 1px 3px rgba(16, 43, 45, 0.05)" }}>
+          <FolderHeart size={40} style={{ color: "var(--dark-teal)", margin: "0 auto 12px" }} />
+          <h3 style={{ fontSize: 18, color: "var(--deep-teal)", fontWeight: 700, margin: "0 0 6px" }}>
+            {searchQuery ? `No ${cfg.title} match "${searchQuery}"` : `No items in ${cfg.title}`}
+          </h3>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
+            {searchQuery ? "Try searching for a different character or item name." : "Items will appear here once added to the catalogue."}
+          </p>
+        </div>
+      ) : category === "skins" && skinGroups ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+          {skinGroups.map(grp => {
+            const groupOwnedCount = grp.skins.filter(s => collection.owned_item_ids.includes(s.id)).length;
+            const cardLogo = grp.card.logo_image || grp.card.image;
+            return (
+              <div key={grp.card.id} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 16px",
+                  background: "var(--surf-white)",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: 10,
+                  boxShadow: "0 1px 3px rgba(16, 43, 45, 0.04)"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    {cardLogo ? (
+                      <img
+                        src={cardLogo}
+                        alt=""
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 6,
+                          objectFit: "contain",
+                          background: "var(--tile-bg)",
+                          border: "1px solid var(--border-subtle)",
+                          padding: 2
+                        }}
+                      />
+                    ) : null}
+                    <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--deep-teal)", margin: 0 }}>
+                      {grp.card.name}
+                    </h3>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", background: "var(--tile-bg)", border: "1px solid var(--border-subtle)", padding: "3px 10px", borderRadius: 12 }}>
+                      {grp.skins.length} {grp.skins.length === 1 ? "Skin" : "Skins"}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--dark-teal)", background: "rgba(23, 63, 67, 0.1)", border: "1px solid rgba(23, 63, 67, 0.2)", padding: "3px 10px", borderRadius: 12 }}>
+                      {groupOwnedCount} Owned
+                    </span>
+                  </div>
+                </div>
 
-          return (
-            <div key={item.id} className="m42-logo-tile">
-              <button
-                type="button"
-                className="m42-logo-button"
-                onClick={() => onOpenItem(item)}
-                title={`View ${item.name}`}
-              >
-                {imgSrc ? (
-                  <img src={imgSrc} alt="" loading="lazy" />
-                ) : (
-                  <div className="m42-logo-placeholder">No image</div>
-                )}
-                {isOwned && <span className="m42-entry-status-badge">Owned</span>}
-                {category === "icons" && isOwner && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      bottom: 4,
-                      left: 4,
-                      background: "rgba(4,20,32,0.85)",
-                      color: "var(--peach)",
-                      fontSize: 10,
-                      fontWeight: 700,
-                      padding: "1px 5px",
-                      borderRadius: 4,
-                      border: "1px solid rgba(134,185,177,0.3)"
-                    }}
-                    title={`Position #${currentPosition}`}
-                  >
-                    #{currentPosition}
-                  </span>
-                )}
-              </button>
-
-              <div className="m42-logo-name" title={item.name} onClick={() => onOpenItem(item)} style={{ cursor: "pointer" }}>{item.name || "Unnamed"}</div>
-              <div className="m42-logo-meta">
-                {category === "cp_wallets" ? (item.condition || "") : item.cp > 0 ? `${fmtNum(item.cp)} CP` : item.character || item.condition || ""}
+                <div className="m42-items-grid m42-grid-skins">
+                  {grp.skins.map((skin, idx) => renderItemTile(skin, idx))}
+                </div>
               </div>
-
-              <div className="m42-logo-actions">
-                {isOwner && (
-                  <>
-                    {category === "icons" && onMoveIcon && (
-                      <span style={{ display: "inline-flex", gap: 2, marginRight: 2 }}>
-                        <button
-                          type="button"
-                          className="m42-btn m42-btn-ghost"
-                          style={{ padding: "3px 4px" }}
-                          title="Move Previous (Left)"
-                          onClick={e => { e.stopPropagation(); onMoveIcon(item.id, "prev"); }}
-                        >
-                          <ArrowLeft size={11} />
-                        </button>
-                        <button
-                          type="button"
-                          className="m42-btn m42-btn-ghost"
-                          style={{ padding: "3px 4px" }}
-                          title="Move Next (Right)"
-                          onClick={e => { e.stopPropagation(); onMoveIcon(item.id, "next"); }}
-                        >
-                          <ArrowRight size={11} />
-                        </button>
-                        <button
-                          type="button"
-                          className="m42-btn m42-btn-ghost"
-                          style={{ padding: "3px 5px", fontSize: 10, fontWeight: 700, color: "var(--peach)" }}
-                          title="Move to specific position"
-                          onClick={e => {
-                            e.stopPropagation();
-                            const target = prompt(`Move icon "${item.name}" to position (1 - ${items.length}):`, String(currentPosition));
-                            if (target) {
-                              const pos = parseInt(target, 10);
-                              if (!isNaN(pos) && pos >= 1 && pos <= items.length) {
-                                onMoveIcon(item.id, undefined, pos);
-                              } else {
-                                alert(`Target position must be between 1 and ${items.length}`);
-                              }
-                            }
-                          }}
-                        >
-                          #
-                        </button>
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      className="m42-btn m42-btn-ghost"
-                      style={{ padding: "4px 5px" }}
-                      title="Edit Item"
-                      onClick={() => onAdminEdit(item)}
-                    >
-                      <Pencil size={11} />
-                    </button>
-                    <button
-                      type="button"
-                      className="m42-btn m42-btn-ghost"
-                      style={{ padding: "4px 5px", color: "#ff9999" }}
-                      title="Delete Item"
-                      onClick={() => onAdminDelete(item.id)}
-                    >
-                      <Trash2 size={11} />
-                    </button>
-                  </>
-                )}
-                {category === "cp_wallets" ? (
-                  <span
-                    className={`m42-owned-toggle ${isOwned ? "checked" : ""}`}
-                    style={{ cursor: "default", opacity: isOwned ? 1 : 0.6 }}
-                    title={isOwned ? "Active CP Tier (automatically awarded based on total CP)" : `Requires ${item.condition}`}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <span>{isOwned ? "Active Tier" : "Locked"}</span>
-                  </span>
-                ) : (
-                  <label className={`m42-owned-toggle ${isOwned ? "checked" : ""}`} onClick={e => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={isOwned}
-                      onChange={() => onToggleOwned(item.id)}
-                    />
-                    <span>I Have</span>
-                  </label>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className={`m42-items-grid m42-grid-${category}`}>
+          {filteredItems.map((item: CatalogueItem, idx: number) => renderItemTile(item, idx))}
+        </div>
+      )}
     </div>
   );
 }
 
 // 4. Focused Item View Modal (Supports Wallets with 3 detail images and Card-Skin associations!)
 function FocusedItemModal({
-  item, category, cards, skins, collection, stats, isOwned,
+  item, category, cards, skins, collection, stats, isOwned, currentUser, onRefreshCatalogue,
   onClose, onToggleOwned, onSelectSkin, onSelectCard, onToggleSkinOwned
 }: any) {
   const isWallet = category === "wallets" || category === "wallet" || category === "cp_wallets";
   const isCPWallet = category === "cp_wallets";
   const isSkin = category === "skins" || category === "skin";
   const isCard = category === "cards" || category === "card";
+  const isSticker = category === "stickers" || category === "sticker";
   const parentCard = isSkin ? (cards || []).find((c: any) => c.id === item.card_id || (c.character && c.character === item.character)) : null;
+
+  let initialStickerExtra: any = {};
+  try {
+    if (item.extra) initialStickerExtra = JSON.parse(item.extra);
+  } catch (e) {}
+
+  const [stickerExtra, setStickerExtra] = useState(initialStickerExtra);
+  const [newStickerUrl, setNewStickerUrl] = useState("");
+  const [uploadingSticker, setUploadingSticker] = useState(false);
+  const isOwner = currentUser?.role === "owner";
+
+  async function handleAddStickerImage(url: string) {
+    if (!url.trim()) return;
+    const currentImgs = stickerExtra.sticker_images || [];
+    const nextImgs = [...currentImgs, url.trim()];
+    const nextExtra = { ...stickerExtra, sticker_images: nextImgs };
+    try {
+      await api.updateCatalogueItem(item.id, { extra: JSON.stringify(nextExtra) });
+      setStickerExtra(nextExtra);
+      setNewStickerUrl("");
+      if (onRefreshCatalogue) onRefreshCatalogue();
+    } catch (err: any) {
+      alert("Failed to add sticker: " + err.message);
+    }
+  }
+
+  async function handleDeleteStickerImage(indexToDelete: number) {
+    if (!confirm("Remove this sticker image from the pack?")) return;
+    const currentImgs = stickerExtra.sticker_images || [];
+    const nextImgs = currentImgs.filter((_: any, idx: number) => idx !== indexToDelete);
+    const nextExtra = { ...stickerExtra, sticker_images: nextImgs };
+    try {
+      await api.updateCatalogueItem(item.id, { extra: JSON.stringify(nextExtra) });
+      setStickerExtra(nextExtra);
+      if (onRefreshCatalogue) onRefreshCatalogue();
+    } catch (err: any) {
+      alert("Failed to delete sticker: " + err.message);
+    }
+  }
+
+  async function handleUploadStickerFile(file: File) {
+    setUploadingSticker(true);
+    try {
+      const res = await api.uploadCatalogueImage(file, "stickers");
+      await handleAddStickerImage(res.url);
+    } catch (err: any) {
+      alert("Failed to upload sticker: " + err.message);
+    } finally {
+      setUploadingSticker(false);
+    }
+  }
 
   const associatedSkins = useMemo(() => {
     if (!isCard) return [];
@@ -1096,7 +1423,7 @@ function FocusedItemModal({
 
   return (
     <div className="m42-modal-overlay" onClick={onClose}>
-      <div className="m42-focused-card" style={{ maxWidth: isCard && associatedSkins.length > 0 ? 820 : 700 }} onClick={e => e.stopPropagation()}>
+      <div className="m42-focused-card" style={{ maxWidth: (isCard && associatedSkins.length > 0) || isSticker ? 820 : 700 }} onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
           <button type="button" className="m42-btn m42-btn-ghost" onClick={onClose}>
             <ArrowLeft size={15} /> Back
@@ -1108,11 +1435,62 @@ function FocusedItemModal({
 
         <div className="m42-focused-layout">
           <div>
-            <div className={`m42-focused-image ${isWallet && selectedWalletImage ? "wallet-expanded" : ""}`}>
+            <div className={`m42-focused-image ${isWallet && selectedWalletImage ? "wallet-expanded" : ""}`} style={{ position: "relative" }}>
               {mainImageSrc ? (
-                <img src={mainImageSrc} alt={item.name} />
-              ) : (
-                <div className="m42-image-placeholder">No image added</div>
+                <img 
+                  src={mainImageSrc} 
+                  alt={item.name} 
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (isCard && !target.src.includes('/assets/cards/card_')) {
+                      target.src = `/assets/cards/card_${item.id}.jpg`;
+                    } else if (isSkin && !target.src.includes('/assets/skins/skin_')) {
+                      target.src = `/assets/skins/skin_${item.id}.jpg`;
+                    } else {
+                      target.style.display = 'none';
+                      const fb = target.parentElement?.querySelector('.m42-image-placeholder') as HTMLElement;
+                      if (fb) fb.style.display = 'flex';
+                    }
+                  }}
+                />
+              ) : null}
+              <div className="m42-image-placeholder" style={{ display: mainImageSrc ? 'none' : 'flex' }}>
+                No image available
+              </div>
+              {(isCard || isSkin) && item.logo_image && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 10,
+                    left: 10,
+                    width: 44,
+                    height: 44,
+                    borderRadius: 8,
+                    background: "var(--surf-white)",
+                    border: "1px solid var(--border-subtle)",
+                    overflow: "hidden",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+                    zIndex: 5
+                  }}
+                  title={`${item.name} Logo`}
+                >
+                  <img
+                    src={item.logo_image}
+                    alt=""
+                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (isCard && !target.src.includes('/assets/cards/card_logo_')) {
+                        target.src = `/assets/cards/card_logo_${item.id}.jpg`;
+                      } else if (isSkin && !target.src.includes('/assets/skins/skin_logo_')) {
+                        target.src = `/assets/skins/skin_logo_${item.id}.jpg`;
+                      }
+                    }}
+                  />
+                </div>
               )}
             </div>
 
@@ -1167,8 +1545,15 @@ function FocusedItemModal({
           </div>
 
           <div>
-            <div className="m42-focused-kicker">
-              {isSkin ? "Skin" : isCard ? "Card / Role" : isCPWallet ? "CP Wallet" : isWallet ? "Wallet" : category}
+            <div className="m42-focused-kicker" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {isCard && item.logo_image && (
+                <img
+                  src={item.logo_image}
+                  alt=""
+                  style={{ width: 20, height: 20, borderRadius: 4, objectFit: "contain", verticalAlign: "middle" }}
+                />
+              )}
+              <span>{isSkin ? "Skin" : isCard ? "Card / Role" : isCPWallet ? "CP Wallet" : isWallet ? "Wallet" : isSticker ? "Sticker Pack" : category === "speech_bubbles" ? "Speech Bubble" : category}</span>
             </div>
             <h2 className="m42-focused-heading">{item.name}</h2>
             {isCPWallet && item.condition && (
@@ -1201,6 +1586,22 @@ function FocusedItemModal({
               </span>
               {item.rarity && <span className="m42-focused-pill">Rarity: {item.rarity}</span>}
               {item.condition && <span className="m42-focused-pill">Condition: {item.condition}</span>}
+              {isSticker && (
+                <>
+                  <span className="m42-focused-pill" style={{
+                    background: stickerExtra.acquisition_method === "Shop" ? "rgba(224, 159, 62, 0.15)" : "rgba(23, 63, 67, 0.1)",
+                    color: stickerExtra.acquisition_method === "Shop" ? "#9c680c" : "var(--dark-teal)",
+                    border: stickerExtra.acquisition_method === "Shop" ? "1px solid rgba(224, 159, 62, 0.3)" : "1px solid rgba(23, 63, 67, 0.2)"
+                  }}>
+                    {stickerExtra.acquisition_method === "Shop"
+                      ? `Obtained from Shop (${stickerExtra.shop_price ? fmtNum(stickerExtra.shop_price) + " Lunas" : "Lunas"})`
+                      : "Obtained from Event"}
+                  </span>
+                  <span className="m42-focused-pill">
+                    {(stickerExtra.sticker_images || []).length} Stickers
+                  </span>
+                </>
+              )}
             </div>
 
             {item.description && (
@@ -1294,7 +1695,7 @@ function FocusedItemModal({
                             onClick={() => onSelectSkin && onSelectSkin(s)}
                             title={`View details for ${s.name}`}
                           >
-                            <div style={{ width: 56, height: 56, borderRadius: 6, overflow: "hidden", background: "#08232D", marginBottom: 6 }}>
+                            <div style={{ width: 56, height: 56, borderRadius: 6, overflow: "hidden", background: "var(--tile-bg)", border: "1px solid var(--tile-border)", marginBottom: 6 }}>
                               {skinImg ? (
                                 <img src={skinImg} alt={s.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                               ) : (
@@ -1329,6 +1730,84 @@ function FocusedItemModal({
                 )}
               </div>
             )}
+
+            {/* Sticker Pack Items Grid */}
+            {isSticker && (
+              <div style={{ marginTop: 22, borderTop: "1px solid var(--line)", paddingTop: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <h3 style={{ fontSize: 14, color: "var(--cream)", fontWeight: 600, margin: 0 }}>
+                    Stickers in this Pack ({(stickerExtra.sticker_images || []).length})
+                  </h3>
+                  <span style={{ fontSize: 11, color: "var(--text-3)" }}>Unlimited by design</span>
+                </div>
+
+                {(stickerExtra.sticker_images || []).length === 0 ? (
+                  <div style={{ fontSize: 12, color: "var(--text-3)", fontStyle: "italic", padding: "14px 0" }}>
+                    No sticker images in this pack yet.
+                  </div>
+                ) : (
+                  <div className="m42-sticker-grid">
+                    {(stickerExtra.sticker_images || []).map((imgUrl: string, idx: number) => (
+                      <div key={idx} className="m42-sticker-item">
+                        <img src={imgUrl} alt={`Sticker ${idx + 1}`} loading="lazy" />
+                        {isOwner && (
+                          <button
+                            type="button"
+                            className="m42-sticker-delete-btn"
+                            onClick={() => handleDeleteStickerImage(idx)}
+                            title="Remove sticker image"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Owner controls to add more sticker images */}
+                {isOwner && (
+                  <div style={{ marginTop: 14, padding: "12px", background: "var(--surf-2)", border: "1px solid var(--line)", borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--cream)", marginBottom: 8 }}>
+                      Owner Controls: Add Sticker Image
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        type="text"
+                        className="m42-input"
+                        placeholder="Paste sticker image URL..."
+                        value={newStickerUrl}
+                        onChange={e => setNewStickerUrl(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddStickerImage(newStickerUrl);
+                          }
+                        }}
+                        style={{ fontSize: 12 }}
+                      />
+                      <button
+                        type="button"
+                        className="m42-btn m42-btn-primary"
+                        onClick={() => handleAddStickerImage(newStickerUrl)}
+                        style={{ fontSize: 12, padding: "6px 12px", whiteSpace: "nowrap" }}
+                      >
+                        <Plus size={14} /> Add
+                      </button>
+                      <label className="m42-btn m42-btn-ghost" style={{ fontSize: 12, padding: "6px 10px", cursor: "pointer", whiteSpace: "nowrap" }}>
+                        <Upload size={14} /> {uploadingSticker ? "..." : "Upload"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          onChange={e => e.target.files?.[0] && handleUploadStickerFile(e.target.files[0])}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1349,7 +1828,7 @@ function AuthModal({ mode, onModeChange, form, onFormChange, error, onSubmit, on
         </div>
 
         {error && (
-          <div style={{ background: "rgba(220,80,80,0.15)", border: "1px solid rgba(220,80,80,0.4)", borderRadius: 8, padding: "10px 14px", color: "#ff9999", fontSize: 13, marginBottom: 16 }}>
+          <div style={{ background: "rgba(220,80,80,0.15)", border: "1.5px solid #EF4444", borderRadius: 8, padding: "10px 14px", color: "#000000", fontWeight: 700, fontSize: 13, marginBottom: 16 }}>
             {error}
           </div>
         )}
@@ -1424,7 +1903,19 @@ function AdminItemModal({ mode, category, item, cards, onClose, onSave }: any) {
   });
   const [uploading, setUploading] = useState<boolean>(false);
 
+  let initExtra: any = {};
+  try {
+    if (item.extra) initExtra = JSON.parse(item.extra);
+  } catch (e) {}
+
+  const [acquisitionMethod, setAcquisitionMethod] = useState<string>(initExtra.acquisition_method || "Event");
+  const [shopPrice, setShopPrice] = useState<number | string>(initExtra.shop_price ?? 500);
+  const [stickerImagesText, setStickerImagesText] = useState<string>(
+    (initExtra.sticker_images || []).join("\n")
+  );
+
   const isWallet = (formData.category || category) === "wallets";
+  const isSticker = (formData.category || category) === "stickers";
 
   async function handleFileUpload(file: File, targetField: "image" | "logo_image" | number) {
     setUploading(true);
@@ -1444,6 +1935,44 @@ function AdminItemModal({ mode, category, item, cards, onClose, onSave }: any) {
     }
   }
 
+  async function handleStickerUpload(file: File) {
+    setUploading(true);
+    try {
+      const res = await api.uploadCatalogueImage(file, "stickers");
+      setStickerImagesText(prev => (prev ? prev + "\n" + res.url : res.url));
+      if (!formData.image) {
+        setFormData(prev => ({ ...prev, image: res.url, logo_image: res.url }));
+      }
+    } catch (err: any) {
+      alert("Failed to upload: " + err.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const finalData = { ...formData };
+    if (isSticker) {
+      const urls = stickerImagesText
+        .split("\n")
+        .map(s => s.trim())
+        .filter(Boolean);
+      finalData.extra = JSON.stringify({
+        acquisition_method: acquisitionMethod,
+        shop_price: acquisitionMethod === "Shop" ? Number(shopPrice) || 0 : null,
+        sticker_images: urls,
+      });
+      if (!finalData.image && urls.length > 0) {
+        finalData.image = urls[0];
+      }
+      if (!finalData.logo_image && urls.length > 0) {
+        finalData.logo_image = urls[0];
+      }
+    }
+    onSave(finalData);
+  }
+
   return (
     <div className="m42-modal-overlay" onClick={onClose}>
       <div className="m42-card" style={{ width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
@@ -1454,7 +1983,7 @@ function AdminItemModal({ mode, category, item, cards, onClose, onSave }: any) {
           <button type="button" className="m42-btn m42-btn-ghost" onClick={onClose}><X size={18} /></button>
         </div>
 
-        <form onSubmit={e => { e.preventDefault(); onSave(formData); }}>
+        <form onSubmit={handleSubmit}>
           <div className="m42-form-group">
             <label className="m42-label">Category</label>
             <select
@@ -1525,6 +2054,64 @@ function AdminItemModal({ mode, category, item, cards, onClose, onSave }: any) {
             </div>
           )}
 
+          {/* Sticker Pack Specific Settings */}
+          {isSticker && (
+            <div style={{ padding: 14, background: "var(--surf-2)", border: "1px solid var(--line)", borderRadius: 8, marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--cream)", marginBottom: 12 }}>
+                Sticker Pack Settings
+              </div>
+              
+              <div style={{ display: "grid", gridTemplateColumns: acquisitionMethod === "Shop" ? "1fr 1fr" : "1fr", gap: 14, marginBottom: 14 }}>
+                <div className="m42-form-group" style={{ margin: 0 }}>
+                  <label className="m42-label">Acquisition Method</label>
+                  <select
+                    className="m42-select"
+                    value={acquisitionMethod}
+                    onChange={e => setAcquisitionMethod(e.target.value)}
+                  >
+                    <option value="Event">Event (Obtained from Event)</option>
+                    <option value="Shop">Shop (Obtained from Shop)</option>
+                  </select>
+                </div>
+
+                {acquisitionMethod === "Shop" && (
+                  <div className="m42-form-group" style={{ margin: 0 }}>
+                    <label className="m42-label">Shop Purchase Price (Lunas)</label>
+                    <input
+                      type="number"
+                      className="m42-input"
+                      value={shopPrice}
+                      onChange={e => setShopPrice(e.target.value)}
+                      placeholder="e.g. 500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="m42-form-group" style={{ margin: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <label className="m42-label" style={{ margin: 0 }}>Sticker Images (one URL per line)</label>
+                  <label className="m42-btn m42-btn-ghost" style={{ padding: "2px 8px", fontSize: 11, cursor: "pointer" }}>
+                    <Upload size={12} /> Upload Sticker
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={e => e.target.files?.[0] && handleStickerUpload(e.target.files[0])}
+                    />
+                  </label>
+                </div>
+                <textarea
+                  className="m42-textarea"
+                  rows={4}
+                  value={stickerImagesText}
+                  onChange={e => setStickerImagesText(e.target.value)}
+                  placeholder="https://.../emoticon_1.webp&#10;https://.../emoticon_2.webp"
+                />
+              </div>
+            </div>
+          )}
+
           <div className="m42-form-group">
             <label className="m42-label">Description</label>
             <textarea
@@ -1536,13 +2123,13 @@ function AdminItemModal({ mode, category, item, cards, onClose, onSave }: any) {
 
           {/* Main Image / Logo */}
           <div className="m42-form-group">
-            <label className="m42-label">{isWallet ? "Wallet Main Logo Image" : "Main Image URL"}</label>
+            <label className="m42-label">{isWallet ? "Wallet Main Logo Image" : isSticker ? "Pack Logo / Thumbnail URL" : "Main Image URL"}</label>
             <div style={{ display: "flex", gap: 10 }}>
               <input
                 type="text"
                 className="m42-input"
-                value={isWallet ? formData.logo_image : formData.image}
-                onChange={e => setFormData({ ...formData, [isWallet ? "logo_image" : "image"]: e.target.value })}
+                value={isWallet ? formData.logo_image : (formData.image || formData.logo_image)}
+                onChange={e => setFormData({ ...formData, image: e.target.value, logo_image: e.target.value })}
                 placeholder="/assets/..."
               />
               <label className="m42-btn m42-btn-ghost" style={{ cursor: "pointer", whiteSpace: "nowrap" }}>
@@ -1565,7 +2152,7 @@ function AdminItemModal({ mode, category, item, cards, onClose, onSave }: any) {
                 {[0, 1, 2].map(i => (
                   <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: 8, textAlign: "center" }}>
                     <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>Image {i + 1}</div>
-                    <div style={{ width: "100%", height: 70, background: "#08232D", borderRadius: 6, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: "100%", height: 70, background: "var(--tile-bg)", border: "1px solid var(--tile-border)", borderRadius: 6, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {formData.wallet_images?.[i] ? (
                         <img src={formData.wallet_images[i]} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
                       ) : (
@@ -1940,7 +2527,7 @@ function AchievementsPage({ stats }: any) {
 }
 
 // 13. Settings Page
-function SettingsPage({ currentUser, onExport }: any) {
+function SettingsPage({ currentUser, theme, onToggleTheme, onSetTheme, onExport }: any) {
   return (
     <div>
       <div className="m42-section-head">
@@ -1950,14 +2537,33 @@ function SettingsPage({ currentUser, onExport }: any) {
         </div>
       </div>
 
-      <div className="m42-card" style={{ maxWidth: 560 }}>
-        <h3 className="m42-section-title m42-serif" style={{ fontSize: 18, marginBottom: 14 }}>Theme &amp; Appearance</h3>
-        <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 20 }}>
-          Current Theme: <strong>Teal Mist (Aqua &amp; Cyan Dark)</strong>
+      <div className="m42-card" style={{ maxWidth: 580 }}>
+        <h3 className="m42-section-title m42-serif" style={{ fontSize: 18, marginBottom: 8 }}>Theme &amp; Appearance</h3>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14 }}>
+          Choose your interface theme. Selected theme is saved automatically and persists on page refresh.
+        </p>
+
+        <div style={{ display: "flex", gap: 12, marginBottom: 28, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className={`m42-btn ${theme === "dark" ? "m42-btn-primary" : "m42-btn-ghost"}`}
+            onClick={() => onSetTheme("dark")}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 8 }}
+          >
+            <Moon size={16} /> Dark Mode (Muted Deep Teal)
+          </button>
+          <button
+            type="button"
+            className={`m42-btn ${theme === "light" ? "m42-btn-primary" : "m42-btn-ghost"}`}
+            onClick={() => onSetTheme("light")}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 8 }}
+          >
+            <Sun size={16} /> Light Mode (Soft Mint &amp; White)
+          </button>
         </div>
 
-        <h3 className="m42-section-title m42-serif" style={{ fontSize: 18, marginBottom: 14 }}>Backup &amp; Export</h3>
-        <p style={{ fontSize: 12.5, color: "var(--text-3)", marginBottom: 14 }}>
+        <h3 className="m42-section-title m42-serif" style={{ fontSize: 18, marginBottom: 8 }}>Backup &amp; Export</h3>
+        <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 14 }}>
           Download canonical JSON format version 2 containing all shared catalogue and collection items.
         </p>
         <button
@@ -2198,17 +2804,21 @@ function GemsPage({
   const [selectedCardIdForLink, setSelectedCardIdForLink] = useState<string>("");
   const [savingLink, setSavingLink] = useState<boolean>(false);
 
+  const [gemsError, setGemsError] = useState<string | null>(null);
+
   useEffect(() => {
     loadGems();
   }, [currentUser]);
 
   async function loadGems() {
     setLoading(true);
+    setGemsError(null);
     try {
       const data = await api.getGems();
       setGemsData(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to load gems:", err);
+      setGemsError(err?.message || "Failed to load gems catalogue.");
     } finally {
       setLoading(false);
     }
@@ -2328,8 +2938,21 @@ function GemsPage({
   if (loading && !gemsData) {
     return (
       <div style={{ textAlign: "center", padding: "80px 20px" }}>
-        <RefreshCw size={32} className="spin" color="var(--peach)" />
-        <div style={{ marginTop: 16, color: "var(--text-3)", fontSize: 14 }}>Loading Gems catalogue...</div>
+        <RefreshCw size={32} className="spin" color="var(--peach)" style={{ margin: "0 auto 16px" }} />
+        <div style={{ marginTop: 16, color: "#000000", fontWeight: 700, fontSize: 15 }}>Loading Gems catalogue...</div>
+      </div>
+    );
+  }
+
+  if (gemsError && !gemsData) {
+    return (
+      <div style={{ textAlign: "center", padding: "60px 20px", background: "var(--card-bg)", border: "1.5px solid #EF4444", borderRadius: 12, maxWidth: 500, margin: "40px auto" }}>
+        <AlertCircle size={36} style={{ color: "#EF4444", margin: "0 auto 12px" }} />
+        <h3 style={{ fontSize: 18, color: "#000000", fontWeight: 700, margin: "0 0 6px" }}>Failed to load Gems</h3>
+        <p style={{ fontSize: 13, color: "#000000", marginBottom: 16 }}>{gemsError}</p>
+        <button type="button" className="m42-btn m42-btn-peach" onClick={loadGems}>
+          <RefreshCw size={14} style={{ marginRight: 6 }} /> Retry Loading Gems
+        </button>
       </div>
     );
   }
@@ -2508,14 +3131,14 @@ function GemsPage({
                     <img
                       src={cards.find(c => c.id === selectedCardIdForLink)?.image}
                       alt="Card Preview"
-                      style={{ width: 44, height: 60, borderRadius: 4, objectFit: "cover", border: "1px solid var(--peach)" }}
+                      style={{ width: 44, height: 60, borderRadius: 4, objectFit: "cover", border: "1px solid #2F5B61" }}
                     />
                   )}
                   <div>
-                    <div style={{ fontWeight: 600, color: "var(--cream)", fontSize: 13 }}>
+                    <div style={{ fontWeight: 700, color: "#000000", fontSize: 13 }}>
                       {cards.find(c => c.id === selectedCardIdForLink)?.name}
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                    <div style={{ fontSize: 11, color: "#000000", fontWeight: 600 }}>
                       Card ID: {selectedCardIdForLink}
                     </div>
                   </div>

@@ -10,6 +10,8 @@ from backend.app.database import engine, Base, SessionLocal
 from backend.app.seed import seed_database
 from backend.app.routers import auth, catalogue, collection, user, admin, gems
 
+# Reload trigger for skin batch routes
+
 # Create tables
 Base.metadata.create_all(bind=engine)
 

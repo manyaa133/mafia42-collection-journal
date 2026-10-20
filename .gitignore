@@ -69,4 +69,5 @@ npm-debug.log*
 yarn-debug.log*
 # Scratch & temporary analysis files
 scratch_*.txt
+scratch/
 
