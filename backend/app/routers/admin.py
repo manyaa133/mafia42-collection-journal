@@ -23,6 +23,7 @@ router = APIRouter(prefix="/admin", tags=["Owner Administration"])
 WORKSPACE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 BACKEND_ASSETS = os.path.join(WORKSPACE_DIR, "backend", "static", "assets")
 FRONTEND_ASSETS = os.path.join(WORKSPACE_DIR, "frontend", "public", "assets")
+SEED_CATALOGUE_PATH = os.path.join(WORKSPACE_DIR, "database", "seed_catalogue.json")
 
 # Catalogue Management
 @router.post("/catalogue", response_model=CatalogueItemResponse)
@@ -95,6 +96,23 @@ def update_catalogue_item(
     db.add(audit)
     db.commit()
     db.refresh(item)
+
+    # Synchronize updates to seed_catalogue.json so values persist across reseeds/deployments
+    try:
+        if os.path.exists(SEED_CATALOGUE_PATH):
+            with open(SEED_CATALOGUE_PATH, "r", encoding="utf-8") as f:
+                seed_data = json.load(f)
+            cat_list = seed_data.get(item.category.lower(), [])
+            for s_item in cat_list:
+                if s_item.get("id") == item_id:
+                    for field, val in update_data.items():
+                        s_item[field] = val
+                    break
+            with open(SEED_CATALOGUE_PATH, "w", encoding="utf-8") as f:
+                json.dump(seed_data, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        logger.warning(f"Failed to synchronize catalogue update to seed_catalogue.json: {e}")
+
     return CatalogueItemResponse.model_validate(item)
 
 @router.delete("/catalogue/{item_id}")

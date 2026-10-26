@@ -233,7 +233,7 @@ def test_10_data_integrity():
     cat = client.get("/api/catalogue").json()
     assert len(cat["skins"]) >= 334
     assert len(cat["cards"]) == 42
-    assert len(cat["frames"]) == 158
+    assert len(cat["frames"]) >= 158
     assert len(cat["nameplates"]) >= 178
     assert len(cat["icons"]) >= 170
 

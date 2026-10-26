@@ -98,7 +98,11 @@ def seed_database(db: Session):
                     c_item.card_id = item.get("cardId") or item.get("card_id", "")
                     c_item.rarity = item.get("rarity", "")
                     c_item.level = item.get("level", 1)
-                    c_item.cp = item.get("cp", 0)
+                    # Preserve existing database CP values for stickers and speech bubbles
+                    if cat_name in ("stickers", "speech_bubbles") and c_item.cp is not None:
+                        pass
+                    else:
+                        c_item.cp = item.get("cp", 0)
                     c_item.description = item.get("description", "")
                     c_item.condition = item.get("condition", "")
                     c_item.how_to = item.get("howTo") or item.get("how_to", "")
