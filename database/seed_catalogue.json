@@ -7009,6 +7009,25 @@
       "wallet_images": [],
       "display_order": 376,
       "logoImage": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/character/mafia/contest8/jobthumb_mafia_contest8.webp"
+    },
+    {
+      "id": "virtual_psy",
+      "category": "skins",
+      "name": "Virtual Psychic",
+      "character": "Psychic",
+      "card_id": "avu23jrp",
+      "rarity": "",
+      "level": 1,
+      "cp": 500,
+      "description": "Virtual Psy skin. Main skin art not released yet.",
+      "condition": "",
+      "how_to": "",
+      "extra": "Virtual Psy",
+      "image": "",
+      "logo_image": "/assets/skins/skin_logo_virtual_psy.webp",
+      "wallet_images": [],
+      "display_order": 377,
+      "logoImage": "/assets/skins/skin_logo_virtual_psy.webp"
     }
   ],
   "icons": [

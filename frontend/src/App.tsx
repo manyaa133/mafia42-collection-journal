@@ -1055,7 +1055,7 @@ function CategoryItemsPage({
 
   const renderItemTile = (item: CatalogueItem, idx: number) => {
     const isOwned = collection.owned_item_ids.includes(item.id);
-    const imgSrc = cfg.isLogo ? (item.logo_image || item.image) : item.image;
+    const imgSrc = cfg.isLogo ? (item.logo_image || item.image) : (item.image || item.logo_image);
     const currentPosition = (items || []).findIndex((it: any) => it.id === item.id) + 1;
     const isSticker = category === "stickers";
     let stickerExtra: any = {};
@@ -1095,7 +1095,7 @@ function CategoryItemsPage({
           <div className="m42-logo-placeholder" style={{ display: imgSrc ? 'none' : 'flex' }}>
             {item.name ? item.name.slice(0, 3).toUpperCase() : "IMG"}
           </div>
-          {(category === "cards" || category === "skins") && item.logo_image && (
+          {(category === "cards" || category === "skins") && item.logo_image && item.image && item.image !== item.logo_image && (
             <span
               className="m42-card-logo-badge"
               title={`${item.name} Logo`}
@@ -1457,7 +1457,7 @@ function FocusedItemModal({
               <div className="m42-image-placeholder" style={{ display: mainImageSrc ? 'none' : 'flex' }}>
                 No image available
               </div>
-              {(isCard || isSkin) && item.logo_image && (
+              {(isCard || isSkin) && item.logo_image && item.image && item.image !== item.logo_image && (
                 <div
                   style={{
                     position: "absolute",
