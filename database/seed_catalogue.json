@@ -16232,6 +16232,42 @@
       "logo_image": "",
       "wallet_images": [],
       "display_order": 885
+    },
+    {
+      "id": "nameplate_angelic_sparkle",
+      "category": "nameplates",
+      "name": "Angelic Sparkle",
+      "character": "",
+      "card_id": "",
+      "rarity": "",
+      "level": 1,
+      "cp": 500,
+      "description": "Earn ruble upon attendance",
+      "condition": "Earn ruble upon attendance",
+      "how_to": "Earn ruble upon attendance",
+      "extra": "",
+      "image": "/assets/nameplates/nameplate_angelic_sparkle.webp",
+      "logo_image": "",
+      "wallet_images": [],
+      "display_order": 886
+    },
+    {
+      "id": "nameplate_corgi_reboot",
+      "category": "nameplates",
+      "name": "Corgi Reboot",
+      "character": "",
+      "card_id": "",
+      "rarity": "",
+      "level": 1,
+      "cp": 500,
+      "description": "Earn luna upon attendance",
+      "condition": "Earn luna upon attendance",
+      "how_to": "Earn luna upon attendance",
+      "extra": "",
+      "image": "/assets/nameplates/nameplate_corgi_reboot.webp",
+      "logo_image": "",
+      "wallet_images": [],
+      "display_order": 887
     }
   ],
   "wallets": [
@@ -18319,7 +18355,8 @@
       "condition": "Obtained from 42 Jackpot Event",
       "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/general/item_room_balloon_42jackpot.webp",
       "logo_image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/general/item_room_balloon_42jackpot.webp",
-      "display_order": 1
+      "display_order": 1,
+      "extra": "{\"acquisition_method\": \"Event\", \"shop_price\": null}"
     },
     {
       "id": "bubble_butterfly",
@@ -18331,7 +18368,8 @@
       "condition": "Obtained from Butterfly Event",
       "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/general/item_room_balloon_butterfly.webp",
       "logo_image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/general/item_room_balloon_butterfly.webp",
-      "display_order": 2
+      "display_order": 2,
+      "extra": "{\"acquisition_method\": \"Event\", \"shop_price\": null}"
     },
     {
       "id": "bubble_card2025",
@@ -18343,7 +18381,8 @@
       "condition": "Obtained from Card 2025 Event",
       "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/general/item_room_balloon_card2025.webp",
       "logo_image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/general/item_room_balloon_card2025.webp",
-      "display_order": 3
+      "display_order": 3,
+      "extra": "{\"acquisition_method\": \"Event\", \"shop_price\": null}"
     },
     {
       "id": "bubble_rabbit",
@@ -18355,7 +18394,8 @@
       "condition": "Obtained from Space Rabbit Event",
       "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/general/item_room_balloon_rabbit.webp",
       "logo_image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/general/item_room_balloon_rabbit.webp",
-      "display_order": 4
+      "display_order": 4,
+      "extra": "{\"acquisition_method\": \"Event\", \"shop_price\": null}"
     },
     {
       "id": "bubble_school2026",
@@ -18367,7 +18407,8 @@
       "condition": "Obtained from School 2026 Event",
       "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/general/item_room_balloon_school2026.webp",
       "logo_image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/general/item_room_balloon_school2026.webp",
-      "display_order": 5
+      "display_order": 5,
+      "extra": "{\"acquisition_method\": \"Event\", \"shop_price\": null}"
     },
     {
       "id": "bubble_thanksgiving2024",
@@ -18379,7 +18420,8 @@
       "condition": "Obtained from Thanksgiving 2024 Event",
       "image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/general/item_room_balloon_thanksgiving2024.webp",
       "logo_image": "https://raw.githubusercontent.com/m42garine-source/Assets/main/assets/item/general/item_room_balloon_thanksgiving2024.webp",
-      "display_order": 6
+      "display_order": 6,
+      "extra": "{\"acquisition_method\": \"Event\", \"shop_price\": null}"
     }
   ],
   "stickers": [

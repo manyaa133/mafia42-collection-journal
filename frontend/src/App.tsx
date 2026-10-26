@@ -1058,8 +1058,9 @@ function CategoryItemsPage({
     const imgSrc = cfg.isLogo ? (item.logo_image || item.image) : (item.image || item.logo_image);
     const currentPosition = (items || []).findIndex((it: any) => it.id === item.id) + 1;
     const isSticker = category === "stickers";
+    const isBubble = category === "speech_bubbles";
     let stickerExtra: any = {};
-    if (isSticker && item.extra) {
+    if ((isSticker || isBubble) && item.extra) {
       try {
         stickerExtra = JSON.parse(item.extra);
       } catch (e) {}
@@ -1140,7 +1141,7 @@ function CategoryItemsPage({
         <div className="m42-logo-meta">
           {category === "cp_wallets" ? (
             item.condition || ""
-          ) : isSticker ? (
+          ) : (isSticker || isBubble) ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "center" }}>
               <span style={{
                 fontSize: 10.5,
@@ -1156,7 +1157,7 @@ function CategoryItemsPage({
                   : "Event"}
               </span>
               <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                {fmtNum(item.cp)} CP • {(stickerExtra.sticker_images || []).length} stickers
+                {fmtNum(item.cp)} CP{isSticker ? ` • ${(stickerExtra.sticker_images || []).length} stickers` : ""}
               </span>
             </div>
           ) : item.cp > 0 ? (
@@ -1355,6 +1356,7 @@ function FocusedItemModal({
   const isSkin = category === "skins" || category === "skin";
   const isCard = category === "cards" || category === "card";
   const isSticker = category === "stickers" || category === "sticker";
+  const isBubble = category === "speech_bubbles" || category === "speech_bubble";
   const parentCard = isSkin ? (cards || []).find((c: any) => c.id === item.card_id || (c.character && c.character === item.character)) : null;
 
   let initialStickerExtra: any = {};
@@ -1586,21 +1588,21 @@ function FocusedItemModal({
               </span>
               {item.rarity && <span className="m42-focused-pill">Rarity: {item.rarity}</span>}
               {item.condition && <span className="m42-focused-pill">Condition: {item.condition}</span>}
+              {(isSticker || isBubble) && stickerExtra.acquisition_method && (
+                <span className="m42-focused-pill" style={{
+                  background: stickerExtra.acquisition_method === "Shop" ? "rgba(224, 159, 62, 0.15)" : "rgba(23, 63, 67, 0.1)",
+                  color: stickerExtra.acquisition_method === "Shop" ? "#9c680c" : "var(--dark-teal)",
+                  border: stickerExtra.acquisition_method === "Shop" ? "1px solid rgba(224, 159, 62, 0.3)" : "1px solid rgba(23, 63, 67, 0.2)"
+                }}>
+                  {stickerExtra.acquisition_method === "Shop"
+                    ? `Obtained from Shop (${stickerExtra.shop_price ? fmtNum(stickerExtra.shop_price) + " Lunas" : "Lunas"})`
+                    : "Obtained from Event"}
+                </span>
+              )}
               {isSticker && (
-                <>
-                  <span className="m42-focused-pill" style={{
-                    background: stickerExtra.acquisition_method === "Shop" ? "rgba(224, 159, 62, 0.15)" : "rgba(23, 63, 67, 0.1)",
-                    color: stickerExtra.acquisition_method === "Shop" ? "#9c680c" : "var(--dark-teal)",
-                    border: stickerExtra.acquisition_method === "Shop" ? "1px solid rgba(224, 159, 62, 0.3)" : "1px solid rgba(23, 63, 67, 0.2)"
-                  }}>
-                    {stickerExtra.acquisition_method === "Shop"
-                      ? `Obtained from Shop (${stickerExtra.shop_price ? fmtNum(stickerExtra.shop_price) + " Lunas" : "Lunas"})`
-                      : "Obtained from Event"}
-                  </span>
-                  <span className="m42-focused-pill">
-                    {(stickerExtra.sticker_images || []).length} Stickers
-                  </span>
-                </>
+                <span className="m42-focused-pill">
+                  {(stickerExtra.sticker_images || []).length} Stickers
+                </span>
               )}
             </div>
 
@@ -1916,6 +1918,7 @@ function AdminItemModal({ mode, category, item, cards, onClose, onSave }: any) {
 
   const isWallet = (formData.category || category) === "wallets";
   const isSticker = (formData.category || category) === "stickers";
+  const isBubble = (formData.category || category) === "speech_bubbles";
 
   async function handleFileUpload(file: File, targetField: "image" | "logo_image" | number) {
     setUploading(true);
@@ -1953,21 +1956,24 @@ function AdminItemModal({ mode, category, item, cards, onClose, onSave }: any) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const finalData = { ...formData };
-    if (isSticker) {
-      const urls = stickerImagesText
-        .split("\n")
-        .map(s => s.trim())
-        .filter(Boolean);
+    if (isSticker || isBubble) {
+      const currentExtra = initExtra || {};
+      const urls = isSticker
+        ? stickerImagesText.split("\n").map(s => s.trim()).filter(Boolean)
+        : (currentExtra.sticker_images || []);
       finalData.extra = JSON.stringify({
+        ...currentExtra,
         acquisition_method: acquisitionMethod,
         shop_price: acquisitionMethod === "Shop" ? Number(shopPrice) || 0 : null,
-        sticker_images: urls,
+        ...(isSticker ? { sticker_images: urls } : {})
       });
-      if (!finalData.image && urls.length > 0) {
-        finalData.image = urls[0];
-      }
-      if (!finalData.logo_image && urls.length > 0) {
-        finalData.logo_image = urls[0];
+      if (isSticker) {
+        if (!finalData.image && urls.length > 0) {
+          finalData.image = urls[0];
+        }
+        if (!finalData.logo_image && urls.length > 0) {
+          finalData.logo_image = urls[0];
+        }
       }
     }
     onSave(finalData);
@@ -2054,14 +2060,14 @@ function AdminItemModal({ mode, category, item, cards, onClose, onSave }: any) {
             </div>
           )}
 
-          {/* Sticker Pack Specific Settings */}
-          {isSticker && (
+          {/* Sticker & Speech Bubble Specific Settings */}
+          {(isSticker || isBubble) && (
             <div style={{ padding: 14, background: "var(--surf-2)", border: "1px solid var(--line)", borderRadius: 8, marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "var(--cream)", marginBottom: 12 }}>
-                Sticker Pack Settings
+                {isSticker ? "Sticker Pack Settings" : "Speech Bubble Settings"}
               </div>
               
-              <div style={{ display: "grid", gridTemplateColumns: acquisitionMethod === "Shop" ? "1fr 1fr" : "1fr", gap: 14, marginBottom: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: acquisitionMethod === "Shop" ? "1fr 1fr" : "1fr", gap: 14, marginBottom: isSticker ? 14 : 0 }}>
                 <div className="m42-form-group" style={{ margin: 0 }}>
                   <label className="m42-label">Acquisition Method</label>
                   <select
